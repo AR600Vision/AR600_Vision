@@ -110,15 +110,13 @@ void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input)
     pcl::PointCloud<POINT_TYPE>::Ptr transformed_cloud = rotate_cloud(cloud);
 
     //Расчет нормалей
-    //pcl::PointCloud<pcl::Normal>::Ptr normals = calulate_normals(transformed_cloud);
+    pcl::PointCloud<pcl::Normal>::Ptr normals = calulate_normals(transformed_cloud);
 
     //Обновляем облако в визуализаторе
     viewer->removeAllPointClouds(0);
     viewer->addPointCloud(transformed_cloud,point_cloud_name);
-    //viewer->addPointCloudNormals<POINT_TYPE, pcl::Normal>(transformed_cloud, normals, 1, 0.015, "normals", 0);
-
-
-    //viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
+    viewer->addPointCloudNormals<POINT_TYPE, pcl::Normal>(transformed_cloud, normals, 1, 0.015, "normals", 0);
+    
 }
 
 
