@@ -10,6 +10,9 @@
 
 #include <ros/ros.h>
 
+//TODO: Это  далеко не лучший способ подключить файл, наверняка Catking_Inlcude_Dirs могут лучше, но не работает
+#include "../../../../devel/include/ar600_vision/StepsController.h"
+
 // PCL specific includes
 #include <pcl/filters/voxel_grid.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -21,19 +24,14 @@
 #include <steps_controller/StepsController/StepsController.h>
 
 const char point_cloud_topic[] = "camera/depth/points";
-const char point_cloud_name[] = "cloud";
-const float downsample_leaf_size =  0.05;
 
-#define POINT_TYPE pcl::PointXYZ
+StepsController steps_controller;
 
-pcl::VoxelGrid<pcl::PCLPointCloud2> sor;                                                   //Для уменьшения плотности точек
-pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input);                    //Принимает облако точек
-
-StepsController steps_controller;
+bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -45,11 +43,11 @@ int main(int argc, char** argv)
 
     ROS_INFO("%s", "AR-600 steps controller started");
 
-    //Создаем визуализатор
-    //viewer = create_viz();
-
     //Подписываемся на топик с облаком точек
     ros::Subscriber sub = n.subscribe(point_cloud_topic ,1, pointcloud_callback);
+
+    //Создаем сервис
+    ros::ServiceServer steps_controller_service = n.advertiseService("steps_controller",CanStep);
 
     //ros::spin ();
 
@@ -74,4 +72,16 @@ void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input)
     pcl_conversions::toPCL(*input, pointCloud2);
 
     steps_controller.UpdateFrame(boost::make_shared<pcl::PCLPointCloud2>(pointCloud2));
+}
+
+
+/////////////////////////////////////////  РЕАЛИЗАЦИЯ СЕРВСИА //////////////////////////////////////////////////////////
+
+/**
+ * Этот сервис принимает запрос на проверку возможности наступить в точку
+ * и возвращает, можно ли наступить в точку и какие параметры шага должны быть
+ */
+bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res)
+{
+    ROS_INFO("Request: StepX=%f StepY=%f",req.StepX, req.StepY);
 }

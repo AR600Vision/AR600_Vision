@@ -1,0 +1,4 @@
+float32 StepX
+float32 StepY
+---
+int8 CanStep

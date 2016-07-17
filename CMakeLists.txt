@@ -9,9 +9,21 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  message_generation
 )
 
 find_package(PCL 1.2 REQUIRED)
+
+# Сервисы
+add_service_files(
+        FILES
+        StepsController.srv
+)
+
+generate_messages(
+        DEPENDENCIES
+        std_msgs
+)
 
 ## Declare a catkin package
 catkin_package()
@@ -20,10 +32,12 @@ catkin_package()
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS "")
 
-include_directories(${PCL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS} src)
+include_directories(${PCL_INCLUDE_DIRS}
+        ${catkin_INCLUDE_DIRS}
+        src)
+
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
-
 
 #TODO: Добавлять исходники в CMakeList.txt как-то более удобно
 add_executable(steps_controller

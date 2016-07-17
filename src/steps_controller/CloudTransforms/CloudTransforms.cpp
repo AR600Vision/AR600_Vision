@@ -39,7 +39,12 @@ pcl::PointCloud<pcl::Normal>::Ptr CloudTransforms::CalulateNormals(pcl::PointClo
     return cloud_normals1;
 }
 
-//Поворот облака
+/**
+ * Поворот облака
+ *
+ * X - вперед
+ * Y - влево
+ * Z - вверх*/
 pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::RotateCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
