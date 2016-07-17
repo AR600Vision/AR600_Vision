@@ -22,10 +22,11 @@
 #include <pcl/common/transforms.h>
 
 #include <steps_controller/StepsController/StepsController.h>
+#include <steps_controller/StepsController/StepRequest.h>
 
 const char point_cloud_topic[] = "camera/depth/points";
 
-StepsController steps_controller;
+StepsController::StepsController steps_controller;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,4 +85,11 @@ void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input)
 bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res)
 {
     ROS_INFO("Request: StepX=%f StepY=%f",req.StepX, req.StepY);
+
+    StepsController::StepControllerRequest request;
+    request.StepX = req.StepX;
+    request.StepY = req.StepY;
+
+    steps_controller.CalculateStep(request);
+
 }
