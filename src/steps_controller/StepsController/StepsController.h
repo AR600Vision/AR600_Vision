@@ -56,15 +56,29 @@ namespace StepsController
 
         //Константы
         static const std::string point_cloud_name;
+        static const std::string search_cloud_name;
+        static const std::string search_cube_name;
+        static const std::string foot_cube_name;
 
         //Основные параметры
         //TODO: сделать возможность настройки параметров
+        static const float foot_x = 0.40;                                                       //Длина стопы
+        static const float foot_y = 0.20;                                                       //Ширина стопы
+        static const float search_x = 0.70;                                                     //Область поиска по длине
+        static const float search_y = 0.20;                                                     //Область поиска по ширине
+        static const float search_z = 1;
+
 
         //Необходимые объекты
         boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;                            //Визуализатор
         CloudTransforms cloud_transforms;                                                       //Для преобразований облака
+        pcl::PointCloud<POINT_TYPE>::Ptr current_cloud;                                         //Сохраненное на последнем сообщении топика облако
 
         boost::shared_ptr<pcl::visualization::PCLVisualizer> setup_vizualizer();                //Создание визуализатор
+        void draw_cube(float x, float y, float z,                                               //Обертка для более удобного рисования кубов
+                       float depth, float width, float height,                                  //Задается координатами центра и размерами
+                       float r, float g, float b,
+                       const std::string &id="cube");
 
     };
 
