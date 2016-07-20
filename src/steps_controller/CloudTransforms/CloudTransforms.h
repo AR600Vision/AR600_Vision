@@ -49,10 +49,15 @@ public:
         float x, float y, float z,
         float depth, float width, float height);
 
+    //Делает из неорганизованного облака организованное
+    static pcl::PointCloud<POINT_TYPE>::Ptr MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud, float step);
+
 private:
 
     float downsample_leaf_size;
     float normal_search_radius;
+
+    float d_x, d_y, d_z;
 
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;                                                    //Для уменьшения плотности точек
     pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;                                          //Для нахождения нормалей
