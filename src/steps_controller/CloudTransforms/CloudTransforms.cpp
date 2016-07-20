@@ -7,11 +7,11 @@
 CloudTransforms::CloudTransforms()
 {
     this->downsample_leaf_size=0.01f;
-    this->normal_search_radius=0.1f;
+    this->normal_search_radius=0.05f;
 
     d_x = 0;
     d_y = 0;
-    d_z = 1;
+    d_z = 1.5;
 }
 
 CloudTransforms::CloudTransforms(float downsample_leaf_size, float normal_search_radius)
@@ -38,7 +38,7 @@ pcl::PointCloud<pcl::Normal>::Ptr CloudTransforms::CalulateNormals(pcl::PointClo
     pcl::search::KdTree<POINT_TYPE>::Ptr tree (new pcl::search::KdTree<POINT_TYPE> ());
     ne.setSearchMethod (tree);
     pcl::PointCloud<pcl::Normal>::Ptr cloud_normals1 (new pcl::PointCloud<pcl::Normal>);
-    ne.setRadiusSearch (downsample_leaf_size);
+    ne.setRadiusSearch (normal_search_radius);
     ne.compute (*cloud_normals1);
     return cloud_normals1;
 }
@@ -54,7 +54,7 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::RotateCloud(pcl::PointCloud<PO
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
     Eigen::Affine3f transforms = Eigen::Affine3f::Identity();
     transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(180), Eigen::Vector3f::UnitZ()));
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90), Eigen::Vector3f::UnitY()));
+    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90 - 40), Eigen::Vector3f::UnitY()));
     transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(90), Eigen::Vector3f::UnitZ()));
 
     transforms.translation()<<d_x, d_y, d_z;

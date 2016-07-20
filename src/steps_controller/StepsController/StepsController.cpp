@@ -52,7 +52,6 @@ namespace StepsController {
         current_cloud = cloud;
 
 
-
         //Обновляем облако в визуализаторе
         viewer->removePointCloud(point_cloud_name);
         viewer->addPointCloud(cloud, point_cloud_name.c_str());
@@ -85,10 +84,9 @@ namespace StepsController {
         viewer->addPointCloudNormals<POINT_TYPE, pcl::Normal>(cropped_cloud, normals, 1, 0.015, "normals", 0);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
 
-
         /*viewer->removePointCloud("organized");
-        viewer->addPointCloud(organized, "normals");
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "normals");*/
+        viewer->addPointCloud(organized, "organized");
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");*/
 
         StepControllerResponse response;
         return response;
