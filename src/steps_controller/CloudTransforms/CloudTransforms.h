@@ -23,13 +23,12 @@ class CloudTransforms
 {
 public:
     CloudTransforms();
-    CloudTransforms(float downsample_leaf_size, float normal_search_radius);
 
     //Уменьшает количество точек в облаке
-    pcl::PCLPointCloud2::Ptr DownsampleCloud(pcl::PCLPointCloud2::Ptr cloud);
+    pcl::PCLPointCloud2::Ptr DownsampleCloud(pcl::PCLPointCloud2::Ptr cloud, float downsample_leaf_size);
 
     //Расчет нормалей
-    pcl::PointCloud<pcl::Normal>::Ptr CalulateNormals(pcl::PointCloud<POINT_TYPE>::Ptr cloud);
+    pcl::PointCloud<pcl::Normal>::Ptr CalulateNormals(pcl::PointCloud<POINT_TYPE>::Ptr cloud, float normal_search_radius);
 
     /**
      * Поворот облака
@@ -37,7 +36,7 @@ public:
      * X - вперед
      * Y - влево
      * Z - вверх*/
-    pcl::PointCloud<POINT_TYPE>::Ptr RotateCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud);
+    pcl::PointCloud<POINT_TYPE>::Ptr TransformCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud, pcl::PointXYZ rotate, pcl::PointXYZ translate);
 
     /**
      * Обрезает облако
@@ -45,9 +44,9 @@ public:
      * depth, width, height - размеры
      *
      */
-    pcl::PointCloud<POINT_TYPE>::Ptr PassThroughFilter(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
-        float x, float y, float z,
-        float depth, float width, float height);
+    pcl::PointCloud<POINT_TYPE>::Ptr BoxFilter(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
+                                               float x, float y, float z,
+                                               float depth, float width, float height);
 
     /**
      * Делает из неорганизованного облака организованное
@@ -63,11 +62,7 @@ public:
 
 private:
 
-    float downsample_leaf_size;
-    float normal_search_radius;
-
-    float d_x, d_y, d_z;
-
+    //TODO: насколько эффективно то, что объекты создаются один раз? Может быть это не сильно помогает и стоит сделать класс статическим
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;                                                    //Для уменьшения плотности точек
     pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;                                          //Для нахождения нормалей
 

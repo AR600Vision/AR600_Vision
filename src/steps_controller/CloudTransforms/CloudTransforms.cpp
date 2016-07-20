@@ -6,33 +6,28 @@
 
 CloudTransforms::CloudTransforms()
 {
-    this->downsample_leaf_size=0.01f;
+    /*this->downsample_leaf_size=0.01f;
     this->normal_search_radius=0.05f;
 
     d_x = 0;
     d_y = 0;
-    d_z = 1.5;
+    d_z = 1.5;*/
 }
 
-CloudTransforms::CloudTransforms(float downsample_leaf_size, float normal_search_radius)
-{
-    this->downsample_leaf_size = downsample_leaf_size;
-    this->normal_search_radius = normal_search_radius;
-}
 
 //Уменьшает количество точек в облаке
-pcl::PCLPointCloud2::Ptr CloudTransforms::DownsampleCloud(pcl::PCLPointCloud2::Ptr cloud)
+pcl::PCLPointCloud2::Ptr CloudTransforms::DownsampleCloud(pcl::PCLPointCloud2::Ptr cloud, float downsample_leaf_size)
 {
     pcl::PCLPointCloud2::Ptr cloud_filtered (new pcl::PCLPointCloud2 ());
     sor.setInputCloud(cloud);
-    sor.setLeafSize(downsample_leaf_size,downsample_leaf_size, downsample_leaf_size);
+    sor.setLeafSize(downsample_leaf_size, downsample_leaf_size, downsample_leaf_size);
     sor.filter(*cloud_filtered);
 
     return cloud_filtered;
 }
 
 //Расчет нормалей
-pcl::PointCloud<pcl::Normal>::Ptr CloudTransforms::CalulateNormals(pcl::PointCloud<POINT_TYPE>::Ptr cloud)
+pcl::PointCloud<pcl::Normal>::Ptr CloudTransforms::CalulateNormals(pcl::PointCloud<POINT_TYPE>::Ptr cloud, float normal_search_radius)
 {
     ne.setInputCloud (cloud);
     pcl::search::KdTree<POINT_TYPE>::Ptr tree (new pcl::search::KdTree<POINT_TYPE> ());
@@ -49,15 +44,17 @@ pcl::PointCloud<pcl::Normal>::Ptr CloudTransforms::CalulateNormals(pcl::PointClo
  * X - вперед
  * Y - влево
  * Z - вверх*/
-pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::RotateCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud)
+pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::TransformCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud, pcl::PointXYZ rotate, pcl::PointXYZ translate)
 {
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
     Eigen::Affine3f transforms = Eigen::Affine3f::Identity();
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(180), Eigen::Vector3f::UnitZ()));
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90 - 37), Eigen::Vector3f::UnitY()));
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(90), Eigen::Vector3f::UnitZ()));
 
-    transforms.translation()<<d_x, d_y, d_z;
+    //TODO: Может быть для корректного вращения надо вращать после поворота для приведения осей
+    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(180 + rotate.z), Eigen::Vector3f::UnitZ()));
+    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90 + rotate.y), Eigen::Vector3f::UnitY()));
+    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(90 + rotate.x), Eigen::Vector3f::UnitZ()));
+
+    transforms.translation()<<translate.x, translate.y, translate.z;
 
     pcl::transformPointCloud(*cloud, *transformed_cloud, transforms);
     return transformed_cloud;
@@ -69,9 +66,9 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::RotateCloud(pcl::PointCloud<PO
  * depth, width, height - размеры
  *
  */
-pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::PassThroughFilter(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
-                                                   float x, float y, float z,
-                                                   float depth, float width, float height)
+pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::BoxFilter(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
+                                                            float x, float y, float z,
+                                                            float depth, float width, float height)
 {
     Eigen::Vector4f min, max;
     min[0] = x - depth/2;
@@ -86,7 +83,6 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::PassThroughFilter(pcl::PointCl
     crop_box.setMax(max);
 
     //TODO: Убедится, что тут нет утечек памяти
-    //pcl::PointCloud<POINT_TYPE>::Ptr cropped = boost::make_shared<pcl::PointCloud<POINT_TYPE> >(*cloud);
     pcl::PointCloud<POINT_TYPE>::Ptr cropped (new pcl::PointCloud<POINT_TYPE>());
 
     crop_box.setInputCloud(cloud);

@@ -26,6 +26,7 @@
 #include "settings.h"
 #include <steps_controller/CloudTransforms/CloudTransforms.h>
 #include "StepRequest.h"
+#include "StepsParams.h"
 
 namespace StepsController
 {
@@ -62,13 +63,7 @@ namespace StepsController
         static const std::string foot_cube_name;
 
         //Основные параметры
-        //TODO: сделать возможность настройки параметров
-        static const float foot_x = 0.40;                                                       //Длина стопы
-        static const float foot_y = 0.20;                                                       //Ширина стопы
-        static const float search_x = 0.70;                                                     //Область поиска по длине
-        static const float search_y = 0.20;                                                     //Область поиска по ширине
-        static const float search_z = 1;
-
+        StepsParams steps_params;
 
         //Необходимые объекты
         boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;                            //Визуализатор

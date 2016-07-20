@@ -14,7 +14,22 @@ namespace StepsController {
     const std::string StepsController::foot_cube_name = "foot_cube";
 
 
-    StepsController::StepsController() {
+    StepsController::StepsController()
+    {
+        steps_params.DownsampleLeafSize = 0.01f;
+        steps_params.ShiftX = 0;
+        steps_params.ShiftY = 0;
+        steps_params.ShiftZ = 1.5;
+        steps_params.RotX = 0;
+        steps_params.RotY = -37;
+        steps_params.NormalSearchRadius = 0.05f;
+        steps_params.FootX = 0.40f;
+        steps_params.FootY = 0.20f;
+        steps_params.SearchX = 0.70f;
+        steps_params.SearchY = 0.20;
+        steps_params.SearchZ=1;
+
+
         viewer = setup_vizualizer();
 
     }
@@ -40,14 +55,16 @@ namespace StepsController {
     void StepsController::UpdateFrame(pcl::PCLPointCloud2::Ptr pointCloud2)
     {
         //Уменьшение размера
-        pointCloud2 = cloud_transforms.DownsampleCloud(pointCloud2);
+        pointCloud2 = cloud_transforms.DownsampleCloud(pointCloud2, steps_params.DownsampleLeafSize);
 
         //Преобразование в pcl::PointCloud<T>
         pcl::PointCloud<POINT_TYPE>::Ptr cloud(new pcl::PointCloud<POINT_TYPE>);
         pcl::fromPCLPointCloud2(*pointCloud2, *cloud);
 
         //Поворот
-        cloud = cloud_transforms.RotateCloud(cloud);
+        cloud = cloud_transforms.TransformCloud(cloud,
+                                                pcl::PointXYZ(steps_params.RotX, steps_params.RotY, steps_params.RotZ),
+                                                pcl::PointXYZ(steps_params.ShiftX, steps_params.ShiftY, steps_params.ShiftZ));
 
         current_cloud = cloud;
 
@@ -66,20 +83,22 @@ namespace StepsController {
 
         float z = 0;
 
-        draw_cube(request.StepX, request.StepY, z, search_x, search_y, search_z, 1,0,0, search_cube_name);
-        draw_cube(request.StepX, request.StepY, z, foot_x, foot_y, 0.1, 0,1,0, foot_cube_name);
+        draw_cube(request.StepX, request.StepY, z, steps_params.SearchX, steps_params.SearchY, steps_params.SearchZ, 1,0,0, search_cube_name);
+        draw_cube(request.StepX, request.StepY, z, steps_params.FootX, steps_params.FootY, 0.1, 0,1,0, foot_cube_name);
 
         //Обрезаем облако, чтобы было только область, в которой мы осуществляем поиск
-        pcl::PointCloud<POINT_TYPE>::Ptr cropped_cloud = cloud_transforms.PassThroughFilter(current_cloud, request.StepX, request.StepY, z, search_x, search_y, search_z);
+        pcl::PointCloud<POINT_TYPE>::Ptr cropped_cloud = cloud_transforms.BoxFilter(current_cloud, request.StepX,
+                                                                                    request.StepY, z,
+                                                                                    steps_params.SearchX, steps_params.SearchY, steps_params.SearchZ);
 
         //Расчет нормалей
-        pcl::PointCloud<pcl::Normal>::Ptr normals = cloud_transforms.CalulateNormals(cropped_cloud);
+        pcl::PointCloud<pcl::Normal>::Ptr normals = cloud_transforms.CalulateNormals(cropped_cloud, steps_params.NormalSearchRadius);
 
-        //TODO: в идеале, второй параметр - downsample_leaf_size
+        //Получаем организованное облако и организованные нормали
         pcl::PointCloud<POINT_TYPE>::Ptr organized;
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
-        CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, 0.01, organized, organized_normals);
-        
+        CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, steps_params.DownsampleLeafSize , organized, organized_normals);
+
 
 
         viewer->removePointCloud("normals");
