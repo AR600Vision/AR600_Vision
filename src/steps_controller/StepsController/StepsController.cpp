@@ -72,16 +72,18 @@ namespace StepsController {
         //Обрезаем облако, чтобы было только область, в которой мы осуществляем поиск
         pcl::PointCloud<POINT_TYPE>::Ptr cropped_cloud = cloud_transforms.PassThroughFilter(current_cloud, request.StepX, request.StepY, z, search_x, search_y, search_z);
 
-        bool a = cropped_cloud->isOrganized();
-
-        //TODO: в идеале, второй параметр - downsample_leaf_size
-        //pcl::PointCloud<POINT_TYPE>::Ptr organized = CloudTransforms::MakeOrganizedCloud(cropped_cloud, 0.01);
-
         //Расчет нормалей
         pcl::PointCloud<pcl::Normal>::Ptr normals = cloud_transforms.CalulateNormals(cropped_cloud);
 
+        //TODO: в идеале, второй параметр - downsample_leaf_size
+        pcl::PointCloud<POINT_TYPE>::Ptr organized;
+        pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
+        CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, 0.01, organized, organized_normals);
+        
+
+
         viewer->removePointCloud("normals");
-        viewer->addPointCloudNormals<POINT_TYPE, pcl::Normal>(cropped_cloud, normals, 1, 0.015, "normals", 0);
+        viewer->addPointCloudNormals<POINT_TYPE, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
 
         /*viewer->removePointCloud("organized");

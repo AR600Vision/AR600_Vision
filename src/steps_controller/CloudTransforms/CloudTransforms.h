@@ -49,8 +49,17 @@ public:
         float x, float y, float z,
         float depth, float width, float height);
 
-    //Делает из неорганизованного облака организованное
-    static pcl::PointCloud<POINT_TYPE>::Ptr MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud, float step);
+    /**
+     * Делает из неорганизованного облака организованное
+     * Так же синхронно с точками сдвигает нормали. Дело в том, что проще
+     * организовать уже найденные нормали, чем найти в организованном облаке, это
+     * почему-то не работает
+     */
+    static void MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
+                            pcl::PointCloud<pcl::Normal>::Ptr normals,
+                            float step,
+                            pcl::PointCloud<POINT_TYPE>::Ptr& organized,
+                            pcl::PointCloud<pcl::Normal>::Ptr& organized_normal);
 
 private:
 
@@ -61,9 +70,9 @@ private:
 
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;                                                    //Для уменьшения плотности точек
     pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;                                          //Для нахождения нормалей
-    pcl::PassThrough<pcl::PointXYZ> pass;
 
     double deg_to_rad(float deg);                                                               //Градусы в радианы, в cmath не нашел
+    static bool is_nan(POINT_TYPE point);
 
 };
 

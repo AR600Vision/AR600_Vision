@@ -20,6 +20,7 @@
 
 //PCL
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/features/integral_image_normal.h>
 
 //Project
 #include "settings.h"

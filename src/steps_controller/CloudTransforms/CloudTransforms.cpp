@@ -54,7 +54,7 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::RotateCloud(pcl::PointCloud<PO
     pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
     Eigen::Affine3f transforms = Eigen::Affine3f::Identity();
     transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(180), Eigen::Vector3f::UnitZ()));
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90 - 40), Eigen::Vector3f::UnitY()));
+    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90 - 37), Eigen::Vector3f::UnitY()));
     transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(90), Eigen::Vector3f::UnitZ()));
 
     transforms.translation()<<d_x, d_y, d_z;
@@ -102,11 +102,23 @@ double CloudTransforms::deg_to_rad(float deg)
     return deg / 180.0 * M_PI;
 }
 
-
+bool CloudTransforms::is_nan(POINT_TYPE point)
+{
+    return std::isnan(point.x) || std::isnan(point.y) || std::isnan(point.z);
+}
 
 //Делает из неорганизованного облака организованное
-pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud, float step)
+void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
+                                         pcl::PointCloud<pcl::Normal>::Ptr normals,
+                                         float step,
+                                         pcl::PointCloud<POINT_TYPE>::Ptr& organized,
+                                         pcl::PointCloud<pcl::Normal>::Ptr& organized_normal)
 {
+    if(cloud->size()!=normals->size())
+    {
+        throw ("The number of points differs from the number of normals!");
+    }
+
     //Ищем минимальные и максимальные координаты в облаке
     float min_x, max_x, min_y, max_y;
     POINT_TYPE point = cloud->at(0);
@@ -137,30 +149,32 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::MakeOrganizedCloud(pcl::PointC
 
     //Создаем облако нужного размера
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    pcl::PointCloud<POINT_TYPE>::Ptr organized = boost::make_shared<pcl::PointCloud<POINT_TYPE> >(i_size_y, i_size_x, POINT_TYPE(nan, nan, nan));
+    organized = boost::make_shared<pcl::PointCloud<POINT_TYPE> >(i_size_y, i_size_x, POINT_TYPE(nan, nan, nan));
+    organized_normal = boost::make_shared<pcl::PointCloud<pcl::Normal> >(i_size_y, i_size_x);
 
     //Заполняем
     for(int i = 0; i<cloud->size(); i++)
     {
         point = cloud->at(i);
+        pcl::Normal normal = normals->at(i);
 
         int i_coord = (point.x-min_x)/step;
         int j_coord = (point.y-min_y)/step;
 
         POINT_TYPE p = organized->at(i_coord, j_coord);
-        if(p.x!=nan && p.y==nan && p.z==nan)
-            if(point.z > p.z)
-                organized->at(i_coord,j_coord)= point;
 
-        organized->at(i_coord,j_coord)= point;
+        if(!is_nan(p))
+        {
+            if (point.z > p.z) {
+                organized->at(i_coord, j_coord) = point;
+                organized_normal->at(i_coord, j_coord) = normal;
+            }
+        }
+        else
+        {
+            organized->at(i_coord, j_coord) = point;
+            organized_normal->at(i_coord, j_coord) = normal;
+        }
     }
-
-    /*pcl::PointCloud<POINT_TYPE>::Ptr organized = boost::make_shared<pcl::PointCloud<POINT_TYPE> >(100, 100);
-    for(int i = 0; i<100; i++)
-        for(int j = 0; j<100; j++)
-            organized->at(i, j)=POINT_TYPE(i/100.0f, j/100.0f, 0);*/
-
-
-    return organized;
 
 }
