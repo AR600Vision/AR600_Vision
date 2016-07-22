@@ -17,6 +17,7 @@
 #define AR600_VISION_STEPS_CONTROLLER_H
 
 #include <string>
+#include <iomanip>
 
 //PCL
 #include <pcl/visualization/pcl_visualizer.h>
@@ -25,6 +26,7 @@
 //Project
 #include "settings.h"
 #include <steps_controller/CloudTransforms/CloudTransforms.h>
+#include <steps_controller/ExtendedMath/ExtendedMath.h>
 #include "StepRequest.h"
 #include "StepsParams.h"
 

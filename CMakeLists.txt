@@ -44,5 +44,6 @@ add_executable(steps_controller
         src/steps_controller/steps_controller.cpp
         src/steps_controller/CloudTransforms/CloudTransforms.cpp
         src/steps_controller/StepsController/StepsController.cpp
-        src/steps_controller/StepsController/StepsParams.h)
+        src/steps_controller/StepsController/StepsParams.h
+        src/steps_controller/ExtendedMath/ExtendedMath.cpp)
 target_link_libraries (steps_controller ${PCL_LIBRARIES} ${catkin_LIBRARIES})

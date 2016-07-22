@@ -11,6 +11,8 @@
 #ifndef AR600_VISION_CLOUDTRANSFORMS_H
 #define AR600_VISION_CLOUDTRANSFORMS_H
 
+#include <limits>
+
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/common/transforms.h>
@@ -18,6 +20,7 @@
 #include <pcl/filters/crop_box.h>
 
 #include "settings.h"
+#include <steps_controller/ExtendedMath/ExtendedMath.h>
 
 class CloudTransforms
 {
@@ -57,7 +60,7 @@ public:
     static void MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
                             pcl::PointCloud<pcl::Normal>::Ptr normals,
                             float step,
-                            pcl::PointCloud<POINT_TYPE>::Ptr& organized,
+                            pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
                             pcl::PointCloud<pcl::Normal>::Ptr& organized_normal);
 
 private:
@@ -66,8 +69,7 @@ private:
     pcl::VoxelGrid<pcl::PCLPointCloud2> sor;                                                    //Для уменьшения плотности точек
     pcl::NormalEstimation<POINT_TYPE, pcl::Normal> ne;                                          //Для нахождения нормалей
 
-    double deg_to_rad(float deg);                                                               //Градусы в радианы, в cmath не нашел
-    static bool is_nan(POINT_TYPE point);
+
 
 };
 

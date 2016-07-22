@@ -70,8 +70,8 @@ namespace StepsController {
 
 
         //Обновляем облако в визуализаторе
-        viewer->removePointCloud(point_cloud_name);
-        viewer->addPointCloud(cloud, point_cloud_name.c_str());
+        //viewer->removePointCloud(point_cloud_name);
+        //viewer->addPointCloud(cloud, point_cloud_name.c_str());
     }
 
 
@@ -95,19 +95,44 @@ namespace StepsController {
         pcl::PointCloud<pcl::Normal>::Ptr normals = cloud_transforms.CalulateNormals(cropped_cloud, steps_params.NormalSearchRadius);
 
         //Получаем организованное облако и организованные нормали
-        pcl::PointCloud<POINT_TYPE>::Ptr organized;
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr organized;
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
         CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, steps_params.DownsampleLeafSize , organized, organized_normals);
 
 
+        //viewer->removePointCloud("normals");
+        //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
+        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
 
-        viewer->removePointCloud("normals");
-        viewer->addPointCloudNormals<POINT_TYPE, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
 
-        /*viewer->removePointCloud("organized");
+        const float nan = std::numeric_limits<float>::quiet_NaN();
+        pcl::PointXYZRGB null_point;
+        null_point.x = nan;
+        null_point.y = nan;
+        null_point.z = nan;
+
+        //Создаем облако нужного размера
+        /*pcl::PointCloud<pcl::PointXYZRGB>::Ptr organized =  boost::make_shared<pcl::PointCloud<pcl::PointXYZRGB> >(100, 100, null_point);
+
+
+        for(int i = 0; i<100; i++)
+        {
+            for(int j = 0; j<100; j++)
+            {
+                organized->at(i,j).x=i/100.0f;
+                organized->at(i,j).y=j/100.0f;
+                organized->at(i,j).z=0;
+
+                organized->at(i,j).r = 255;
+
+            }
+        }*/
+
+
+
+        viewer->removePointCloud("organized");
         viewer->addPointCloud(organized, "organized");
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");*/
+        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");*/
 
         StepControllerResponse response;
         return response;

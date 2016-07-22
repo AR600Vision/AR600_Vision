@@ -50,9 +50,9 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::TransformCloud(pcl::PointCloud
     Eigen::Affine3f transforms = Eigen::Affine3f::Identity();
 
     //TODO: Может быть для корректного вращения надо вращать после поворота для приведения осей
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(180 + rotate.z), Eigen::Vector3f::UnitZ()));
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(-90 + rotate.y), Eigen::Vector3f::UnitY()));
-    transforms.rotate(Eigen::AngleAxis<float>(deg_to_rad(90 + rotate.x), Eigen::Vector3f::UnitZ()));
+    transforms.rotate(Eigen::AngleAxis<float>(ExtendedMath::DegToRad(180 + rotate.z), Eigen::Vector3f::UnitZ()));
+    transforms.rotate(Eigen::AngleAxis<float>(ExtendedMath::DegToRad(-90 + rotate.y), Eigen::Vector3f::UnitY()));
+    transforms.rotate(Eigen::AngleAxis<float>(ExtendedMath::DegToRad(90 + rotate.x), Eigen::Vector3f::UnitZ()));
 
     transforms.translation()<<translate.x, translate.y, translate.z;
 
@@ -92,24 +92,15 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::BoxFilter(pcl::PointCloud<POIN
 
 }
 
-//Градусы в радианы, в cmath не нашел
-double CloudTransforms::deg_to_rad(float deg)
-{
-    return deg / 180.0 * M_PI;
-}
-
-bool CloudTransforms::is_nan(POINT_TYPE point)
-{
-    return std::isnan(point.x) || std::isnan(point.y) || std::isnan(point.z);
-}
 
 //Делает из неорганизованного облака организованное
 void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
                                          pcl::PointCloud<pcl::Normal>::Ptr normals,
                                          float step,
-                                         pcl::PointCloud<POINT_TYPE>::Ptr& organized,
+                                         pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
                                          pcl::PointCloud<pcl::Normal>::Ptr& organized_normal)
 {
+
     if(cloud->size()!=normals->size())
     {
         throw ("The number of points differs from the number of normals!");
@@ -138,38 +129,68 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
 
     //Вычисляем размеро облака
     float size_x = max_x - min_x;
-    float size_y = max_x - min_y;
+    float size_y = max_y - min_y;
 
     int i_size_x = size_x / step;
     int i_size_y = size_y / step;
 
-    //Создаем облако нужного размера
+
+    //Несколько значений для инициализации
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    organized = boost::make_shared<pcl::PointCloud<POINT_TYPE> >(i_size_y, i_size_x, POINT_TYPE(nan, nan, nan));
-    organized_normal = boost::make_shared<pcl::PointCloud<pcl::Normal> >(i_size_y, i_size_x);
+    
+    pcl::PointXYZRGB null_point;
+    null_point.x = nan;
+    null_point.y = nan;
+    null_point.z = nan;
+
+    //Создаем облако нужного размера
+    organized = boost::make_shared<pcl::PointCloud<pcl::PointXYZRGB> >(i_size_x, i_size_y, null_point);
+    organized_normal = boost::make_shared<pcl::PointCloud<pcl::Normal> >(i_size_x, i_size_y, pcl::Normal(nan, nan, nan));
+
+    std::cout<<"width: "<<i_size_x<<"; height: "<<i_size_y<<std::endl;
 
     //Заполняем
+    //Если в одном месте несколько точек - выбираем самую верхнюю
     for(int i = 0; i<cloud->size(); i++)
     {
         point = cloud->at(i);
         pcl::Normal normal = normals->at(i);
 
-        int i_coord = (point.x-min_x)/step;
-        int j_coord = (point.y-min_y)/step;
+        int i_coord = (point.x - min_x) / step;
+        int j_coord = (point.y - min_y) / step;
 
-        POINT_TYPE p = organized->at(i_coord, j_coord);
-
-        if(!is_nan(p))
+        if(i_coord <0 || i_coord>=i_size_x)
         {
-            if (point.z > p.z) {
-                organized->at(i_coord, j_coord) = point;
-                organized_normal->at(i_coord, j_coord) = normal;
+            std::cout << "i_coord: " << i_coord << std::endl;
+            continue;
+        }
+
+        if(j_coord <0 || j_coord>=i_size_y)
+        {
+            std::cout << "j_coord: " << j_coord << std::endl;
+            continue;
+        }
+
+
+        pcl::PointXYZRGB p = organized->at(i_coord, j_coord);
+        pcl::Normal n = organized_normal->at(i_coord, j_coord);
+
+        if(!ExtendedMath::IsPointNaN(p))
+        {
+            if(p.z>point.z)
+            {
+                organized->at(i_coord, j_coord).x = point.x;
+                organized->at(i_coord, j_coord).y = point.y;
+                organized->at(i_coord, j_coord).z = point.z;
             }
         }
         else
         {
-            organized->at(i_coord, j_coord) = point;
-            organized_normal->at(i_coord, j_coord) = normal;
+            organized->at(i_coord, j_coord).x = point.x;
+            organized->at(i_coord, j_coord).y = point.y;
+            organized->at(i_coord, j_coord).z = point.z;
+
+            organized->at(i_coord, j_coord).r = 255;
         }
     }
 
