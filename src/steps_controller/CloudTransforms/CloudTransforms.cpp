@@ -50,9 +50,9 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::TransformCloud(pcl::PointCloud
     Eigen::Affine3f transforms = Eigen::Affine3f::Identity();
 
     //TODO: Может быть для корректного вращения надо вращать после поворота для приведения осей
-    transforms.rotate(Eigen::AngleAxis<float>(ExtendedMath::DegToRad(180 + rotate.z), Eigen::Vector3f::UnitZ()));
-    transforms.rotate(Eigen::AngleAxis<float>(ExtendedMath::DegToRad(-90 + rotate.y), Eigen::Vector3f::UnitY()));
-    transforms.rotate(Eigen::AngleAxis<float>(ExtendedMath::DegToRad(90 + rotate.x), Eigen::Vector3f::UnitZ()));
+    transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(180 + rotate.z), Eigen::Vector3f::UnitZ()));
+    transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(-90 + rotate.y), Eigen::Vector3f::UnitY()));
+    transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(90 + rotate.x), Eigen::Vector3f::UnitZ()));
 
     transforms.translation()<<translate.x, translate.y, translate.z;
 
@@ -141,8 +141,8 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
 
     float nan = std::numeric_limits<float>::quiet_NaN();
     pcl::PointXYZRGB null_point;
-    null_point.x = 0;
-    null_point.y = 0;
+    null_point.x = nan;
+    null_point.y = nan;
     null_point.z = z_min;
 
 

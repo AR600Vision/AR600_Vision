@@ -20,7 +20,7 @@
 #include <pcl/filters/crop_box.h>
 
 #include "settings.h"
-#include <steps_controller/ExtendedMath/ExtendedMath.h>
+#include <steps_controller/Math/Math.h>
 
 class CloudTransforms
 {

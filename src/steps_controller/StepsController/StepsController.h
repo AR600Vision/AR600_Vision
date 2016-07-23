@@ -26,7 +26,8 @@
 //Project
 #include "settings.h"
 #include <steps_controller/CloudTransforms/CloudTransforms.h>
-#include <steps_controller/ExtendedMath/ExtendedMath.h>
+#include <steps_controller/Math/Math.h>
+#include <steps_controller/Utils/Utils.h>
 #include "StepRequest.h"
 #include "StepsParams.h"
 
@@ -72,9 +73,17 @@ namespace StepsController
         CloudTransforms cloud_transforms;                                                       //Для преобразований облака
         pcl::PointCloud<POINT_TYPE>::Ptr current_cloud;                                         //Сохраненное на последнем сообщении топика облако
 
-        boost::shared_ptr<pcl::visualization::PCLVisualizer> setup_vizualizer();                //Создание визуализатор
-        void draw_cube(float x, float y, float z,                                               //Обертка для более удобного рисования кубов
-                       float depth, float width, float height,                                  //Задается координатами центра и размерами
+        //Задает точкам облака цвета в зависимости от откланения от вертикали
+        void color_cloud_normals(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                                 pcl::PointCloud<pcl::Normal>::Ptr normals);
+
+        //Создание визуализатора
+        boost::shared_ptr<pcl::visualization::PCLVisualizer> setup_vizualizer();
+
+        //Обертка для более удобного рисования кубов
+        //Задается координатами центра и размерами
+        void draw_cube(float x, float y, float z,
+                       float depth, float width, float height,
                        float r, float g, float b,
                        const std::string &id="cube");
 

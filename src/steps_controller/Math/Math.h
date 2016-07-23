@@ -11,7 +11,7 @@
 #include <pcl/point_types.h>
 #include "settings.h"
 
-class ExtendedMath
+class Math
 {
 public:
 

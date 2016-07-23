@@ -99,11 +99,36 @@ namespace StepsController {
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
         CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, steps_params.DownsampleLeafSize , organized, organized_normals);
 
-        //Раскрашиваем точки по углу нормалей
-        for(int i = 0; i<organized->size(); i++)
+
+        //Раскрашиваем точки по углу нормале
+        color_cloud_normals(organized, organized_normals);
+
+        //Убираем NaN, чтобы не глючил визуализатор
+        Utils::ReplaceNaNs<pcl::PointXYZRGB>(organized, 0);
+
+        viewer->removePointCloud("normals");
+        viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
+
+
+        viewer->removePointCloud("organized");
+        viewer->addPointCloud(organized, "organized");
+        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "organized");
+        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");
+
+        StepControllerResponse response;
+        return response;
+    }
+
+    //Задает точкам облака цвета в зависимости от откланения от вертикали
+    void StepsController::color_cloud_normals(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
+                             pcl::PointCloud<pcl::Normal>::Ptr normals)
+    {
+        for(int i = 0; i<cloud->size(); i++)
         {
-            pcl::Normal normal = organized_normals->at(i);
-            float angle = ExtendedMath::RadToDeg(acos(ExtendedMath::AngleBetweenLines(normal, ExtendedMath::Vertical())));
+            //pcl::Normal normal = organized_normals->at(i);
+            pcl::Normal normal = normals->at(i);
+            float angle = Math::RadToDeg(acos(Math::AngleBetweenLines(normal, Math::Vertical())));
 
             double max = 90;
             uint8_t green, red;
@@ -115,22 +140,9 @@ namespace StepsController {
 
             red = 255 - green;
 
-            organized->at(i).r = red;
-            organized->at(i).g = green;
+            cloud->at(i).r = red;
+            cloud->at(i).g = green;
         }
-
-        /*viewer->removePointCloud("normals");
-        viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
-        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");*/
-
-
-        viewer->removePointCloud("organized");
-        viewer->addPointCloud(organized, "organized");
-        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "organized");
-        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");
-
-        StepControllerResponse response;
-        return response;
     }
 
     ////////////////////////////// ВСПОМОГАТЕЛЬНЫЕ ФУКНЦИИ /////////////////////////////////////////////////////////////
