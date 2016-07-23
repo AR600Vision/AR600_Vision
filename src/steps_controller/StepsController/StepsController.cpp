@@ -21,7 +21,7 @@ namespace StepsController {
         steps_params.ShiftY = 0;
         steps_params.ShiftZ = 1.5;
         steps_params.RotX = 0;
-        steps_params.RotY = -37;
+        steps_params.RotY = -30;
         steps_params.NormalSearchRadius = 0.05f;
         steps_params.FootX = 0.40f;
         steps_params.FootY = 0.20f;
@@ -70,8 +70,8 @@ namespace StepsController {
 
 
         //Обновляем облако в визуализаторе
-        //viewer->removePointCloud(point_cloud_name);
-        //viewer->addPointCloud(cloud, point_cloud_name.c_str());
+        viewer->removePointCloud(point_cloud_name);
+        viewer->addPointCloud(cloud, point_cloud_name.c_str());
     }
 
 
@@ -99,40 +99,35 @@ namespace StepsController {
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
         CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, steps_params.DownsampleLeafSize , organized, organized_normals);
 
-
-        //viewer->removePointCloud("normals");
-        //viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
-        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
-
-
-        const float nan = std::numeric_limits<float>::quiet_NaN();
-        pcl::PointXYZRGB null_point;
-        null_point.x = nan;
-        null_point.y = nan;
-        null_point.z = nan;
-
-        //Создаем облако нужного размера
-        /*pcl::PointCloud<pcl::PointXYZRGB>::Ptr organized =  boost::make_shared<pcl::PointCloud<pcl::PointXYZRGB> >(100, 100, null_point);
-
-
-        for(int i = 0; i<100; i++)
+        //Раскрашиваем точки по углу нормалей
+        for(int i = 0; i<organized->size(); i++)
         {
-            for(int j = 0; j<100; j++)
-            {
-                organized->at(i,j).x=i/100.0f;
-                organized->at(i,j).y=j/100.0f;
-                organized->at(i,j).z=0;
+            pcl::Normal normal = organized_normals->at(i);
+            float angle = ExtendedMath::RadToDeg(acos(ExtendedMath::AngleBetweenLines(normal, ExtendedMath::Vertical())));
 
-                organized->at(i,j).r = 255;
+            double max = 90;
+            uint8_t green, red;
 
-            }
-        }*/
+            if(fabs(angle)>=max)
+                green=0;
+            else
+                green = (max - fabs(angle)) / max * 255;
 
+            red = 255 - green;
+
+            organized->at(i).r = red;
+            organized->at(i).g = green;
+        }
+
+        /*viewer->removePointCloud("normals");
+        viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
+        viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");*/
 
 
         viewer->removePointCloud("organized");
         viewer->addPointCloud(organized, "organized");
-        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");*/
+        viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "organized");
+        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");
 
         StepControllerResponse response;
         return response;

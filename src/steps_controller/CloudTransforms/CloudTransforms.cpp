@@ -106,91 +106,86 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
         throw ("The number of points differs from the number of normals!");
     }
 
-    //Ищем минимальные и максимальные координаты в облаке
-    float min_x, max_x, min_y, max_y;
-    POINT_TYPE point = cloud->at(0);
-    min_x = point.x; max_x = point.x;
-    min_y = point.y; max_y = point.y;
+    //Нахождение мин. и макс. точек
+    float x_min, x_max, y_min, y_max, z_min;
 
-    for(int i = 1; i<cloud->size(); i++)
-    {
-        point = cloud->at(i);
+    POINT_TYPE first_point = cloud->at(0);
+    x_min = x_max = first_point.x;
+    y_min = y_max = first_point.y;
+    z_min = first_point.z;
 
-        if(point.x < min_x)
-            min_x = point.x;
-        else if(point.x > max_x)
-            max_x = point.x;
-
-        if(point.y < min_y)
-            min_y = point.y;
-        else if(point.y > max_y)
-            max_y = point.y;
-    }
-
-    //Вычисляем размеро облака
-    float size_x = max_x - min_x;
-    float size_y = max_y - min_y;
-
-    int i_size_x = size_x / step;
-    int i_size_y = size_y / step;
-
-
-    //Несколько значений для инициализации
-    const float nan = std::numeric_limits<float>::quiet_NaN();
-    
-    pcl::PointXYZRGB null_point;
-    null_point.x = nan;
-    null_point.y = nan;
-    null_point.z = nan;
-
-    //Создаем облако нужного размера
-    organized = boost::make_shared<pcl::PointCloud<pcl::PointXYZRGB> >(i_size_x, i_size_y, null_point);
-    organized_normal = boost::make_shared<pcl::PointCloud<pcl::Normal> >(i_size_x, i_size_y, pcl::Normal(nan, nan, nan));
-
-    std::cout<<"width: "<<i_size_x<<"; height: "<<i_size_y<<std::endl;
-
-    //Заполняем
-    //Если в одном месте несколько точек - выбираем самую верхнюю
     for(int i = 0; i<cloud->size(); i++)
     {
-        point = cloud->at(i);
+        POINT_TYPE point = cloud->at(i);
+        if(point.x>x_max)
+            x_max = point.x;
+        if(point.x<x_min)
+            x_min = point.x;
+
+
+        if(point.y>y_max)
+            y_max=point.y;
+        if(point.y<y_min)
+            y_min = point.y;
+
+        if(point.z<z_min)
+            z_min = point.z;
+    }
+
+    //Определение размера облака
+    float cloud_width = x_max - x_min;
+    float cloud_height = y_max - y_min;
+
+    int width = cloud_width / step +1;
+    int height = cloud_height / step +1;
+
+    float nan = std::numeric_limits<float>::quiet_NaN();
+    pcl::PointXYZRGB null_point;
+    null_point.x = 0;
+    null_point.y = 0;
+    null_point.z = z_min;
+
+
+    organized = boost::make_shared<pcl::PointCloud<pcl::PointXYZRGB> >(width, height, null_point);
+    organized_normal = boost::make_shared<pcl::PointCloud<pcl::Normal> >(width, height);
+
+
+    //Заносим точки в облако
+    for(int i = 0; i<cloud->size(); i++)
+    {
+        POINT_TYPE point  = cloud->at(i);
         pcl::Normal normal = normals->at(i);
 
-        int i_coord = (point.x - min_x) / step;
-        int j_coord = (point.y - min_y) / step;
+        //Вычисление индексов
+        int column = (point.x - x_min)/step;
+        int row = (point.y - y_min)/step;
 
-        if(i_coord <0 || i_coord>=i_size_x)
+        if(column<0 || column>=width)
         {
-            std::cout << "i_coord: " << i_coord << std::endl;
+            std::cout<<"Overflow column = "<<column<<std::endl;
             continue;
         }
 
-        if(j_coord <0 || j_coord>=i_size_y)
+        if(row<0 || row>=height)
         {
-            std::cout << "j_coord: " << j_coord << std::endl;
+            std::cout<<"Overflow row = "<<row<<std::endl;
             continue;
         }
 
 
-        pcl::PointXYZRGB p = organized->at(i_coord, j_coord);
-        pcl::Normal n = organized_normal->at(i_coord, j_coord);
+        pcl::PointXYZRGB current_point  = organized->at(column, row);
 
-        if(!ExtendedMath::IsPointNaN(p))
+        /* В облаке по одним (x;y) могут быть несколько точек
+         * с разным z.
+         * Надо взять самую верхнюю.
+         */
+        if(point.z>current_point.z)
         {
-            if(p.z>point.z)
-            {
-                organized->at(i_coord, j_coord).x = point.x;
-                organized->at(i_coord, j_coord).y = point.y;
-                organized->at(i_coord, j_coord).z = point.z;
-            }
-        }
-        else
-        {
-            organized->at(i_coord, j_coord).x = point.x;
-            organized->at(i_coord, j_coord).y = point.y;
-            organized->at(i_coord, j_coord).z = point.z;
+            organized->at(column, row).x = point.x;
+            organized->at(column, row).y = point.y;
+            organized->at(column, row).z = point.z;
 
-            organized->at(i_coord, j_coord).r = 255;
+            organized_normal->at(column, row) = normal;
         }
     }
 
