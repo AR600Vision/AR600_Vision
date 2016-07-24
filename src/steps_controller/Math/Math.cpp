@@ -40,3 +40,54 @@ bool Math::IsPointNaN(pcl::Normal point)
 {
     return std::isnan(point.normal_x) || std::isnan(point.normal_y) || std::isnan(point.normal_z);
 }
+
+
+// Расчет матожидания (среднего)
+float Math::Average(DataAccessFunctor* func, int start_x, int end_x, int start_y, int end_y)
+{
+    float av = 0;
+    int counter = 0;
+
+    for(int column = start_x; column<=end_x; column++)
+    {
+        for(int row=start_y; row<=end_y; row++)
+        {
+            float value =(*func)(column, row);
+            if(!std::isnan(value))
+            {
+                av += value;
+                counter++;
+            }
+        }
+    }
+
+    return av/counter;
+}
+
+//Расчт дисперсии
+float Math::Dispetion(DataAccessFunctor* func, float average, int start_x, int end_x, int start_y, int end_y)
+{
+    float sum = 0;
+    int counter = 0;
+
+    for(int column = start_x; column<=end_x; column++)
+    {
+        for(int row=start_y; row<=end_y; row++)
+        {
+            float value =(*func)(column, row);
+            if(!std::isnan(value))
+            {
+                sum += (value-average)*(value-average);
+                counter++;
+            }
+        }
+    }
+
+    return sum / (counter-1);
+}
+
+float Math::Dispetion(DataAccessFunctor* func,  int start_x, int end_x, int start_y, int end_y)
+{
+    float average = Average(func, start_x, end_x, start_y, end_y);
+    return Dispetion(func, average, start_x, end_x, start_y, end_y);
+}

@@ -83,6 +83,13 @@ namespace StepsController {
 
         float z = 0;
 
+        /* Сколько аллокаций тут делается:
+         * 1. BoxFilter - выделяется память под новое облако
+         * 2. CalculateNormals - под нормали
+         * 3. MakeOrganized - под организованное облако и нормали
+         * 4. calculate_normal_angles - под массив углов нормалей
+         */
+
         draw_cube(request.StepX, request.StepY, z, steps_params.SearchX, steps_params.SearchY, steps_params.SearchZ, 1,0,0, search_cube_name);
         draw_cube(request.StepX, request.StepY, z, steps_params.FootX, steps_params.FootY, 0.1, 0,1,0, foot_cube_name);
 
@@ -99,12 +106,49 @@ namespace StepsController {
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
         CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, steps_params.DownsampleLeafSize , organized, organized_normals);
 
+        //Расчет углов нормалей к вертикали
+        boost::shared_ptr<float[]> normal_angles;
+        calculate_noraml_angls(organized_normals, normal_angles);
 
         //Раскрашиваем точки по углу нормале
-        color_cloud_normals(organized, organized_normals);
+        color_cloud_normals(organized, normal_angles);
 
         //Убираем NaN, чтобы не глючил визуализатор
         Utils::ReplaceNaNs<pcl::PointXYZRGB>(organized, 0);
+
+        ArrayAccessFunctor angle_func(normal_angles, organized->width, organized->height);
+        PointCloudAccessFunctor<pcl::PointXYZRGB> cloud_func(organized);
+
+        /*float av_a=0, av_z=0;
+        int cnt = 0, cnt2=0;
+        for(int i = 0; i<organized->size(); i++)
+        {
+            pcl::PointXYZRGB p = organized->at(i);
+            if(!Math::IsPointNaN(p))
+            {
+                av_z += p.z;
+                cnt++;
+            }
+
+            if(!std::isnan(normal_angles[i]))
+            {
+                av_a += normal_angles[i];
+                cnt2++;
+            }
+
+            //std::cout<<angle<<";"<<p.x<<";"<<p.y<<";"<<p.z<<std::endl;
+        }
+
+        av_a /= cnt2;
+        av_z /= cnt;*/
+
+        float av_angle = Math::Average(&angle_func, 0, organized->width-1, 0, organized->height-1);
+        float av_height = Math::Average(&cloud_func, 0, organized->width-1, 0, organized->height-1);
+
+        float d_angle = Math::Dispetion(&angle_func, av_angle, 0, organized->width-1, 0, organized->height-1);
+        float d_height = Math::Dispetion(&cloud_func, av_height, 0, organized->width-1, 0, organized->height-1);
+
+        std::cout<<"M(a): "<<av_angle<<" D(a): "<<d_angle<<"; M(z): "<<av_height*100<<" D(z): "<<d_height*100<<std::endl;
 
         viewer->removePointCloud("normals");
         viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
@@ -120,15 +164,29 @@ namespace StepsController {
         return response;
     }
 
+    //Расчитывает углы между нормалями и вертикалью
+    void StepsController::calculate_noraml_angls(pcl::PointCloud<pcl::Normal>::Ptr normals,
+                                boost::shared_ptr<float[]> & angles)
+    {
+        //TODO: корректно ли работает выделение массива? И будет ли он потом сам удалятс?
+        angles = boost::make_shared<float[]>(normals->size());
+
+        for(int i = 0; i<normals->size(); i++)
+        {
+            pcl::Normal normal = normals->at(i);
+            float angle = Math::RadToDeg(acos(Math::AngleBetweenLines(normal, Math::Vertical())));
+
+            angles[i]=angle;
+        }
+    }
+
     //Задает точкам облака цвета в зависимости от откланения от вертикали
     void StepsController::color_cloud_normals(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                             pcl::PointCloud<pcl::Normal>::Ptr normals)
+                                              boost::shared_ptr<float[]> normal_angles)
     {
         for(int i = 0; i<cloud->size(); i++)
         {
-            //pcl::Normal normal = organized_normals->at(i);
-            pcl::Normal normal = normals->at(i);
-            float angle = Math::RadToDeg(acos(Math::AngleBetweenLines(normal, Math::Vertical())));
+            float angle = normal_angles[i];
 
             double max = 90;
             uint8_t green, red;

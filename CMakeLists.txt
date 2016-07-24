@@ -29,7 +29,6 @@ generate_messages(
 catkin_package()
 
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_CXX_FLAGS "")
 
 include_directories(${PCL_INCLUDE_DIRS}
@@ -45,5 +44,5 @@ add_executable(steps_controller
         src/steps_controller/CloudTransforms/CloudTransforms.cpp
         src/steps_controller/StepsController/StepsController.cpp
         src/steps_controller/StepsController/StepsParams.h
-        src/steps_controller/Math/Math.cpp src/steps_controller/Utils/Utils.cpp src/steps_controller/Utils/Utils.h)
+        src/steps_controller/Math/Math.cpp src/steps_controller/Utils/Utils.cpp src/steps_controller/Utils/Utils.h src/steps_controller/Utils/DataAccessFunctor.cpp src/steps_controller/Utils/DataAccessFunctor.h)
 target_link_libraries (steps_controller ${PCL_LIBRARIES} ${catkin_LIBRARIES})

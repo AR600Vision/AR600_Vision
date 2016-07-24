@@ -19,6 +19,7 @@
 #include <string>
 #include <iomanip>
 
+
 //PCL
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/features/integral_image_normal.h>
@@ -73,9 +74,13 @@ namespace StepsController
         CloudTransforms cloud_transforms;                                                       //Для преобразований облака
         pcl::PointCloud<POINT_TYPE>::Ptr current_cloud;                                         //Сохраненное на последнем сообщении топика облако
 
+        //Расчитывает углы между нормалями и вертикалью
+        void calculate_noraml_angls(pcl::PointCloud<pcl::Normal>::Ptr normals,
+                                    boost::shared_ptr<float[]> & angles);
+
         //Задает точкам облака цвета в зависимости от откланения от вертикали
         void color_cloud_normals(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                                 pcl::PointCloud<pcl::Normal>::Ptr normals);
+                                 boost::shared_ptr<float[]> normal_angles);
 
         //Создание визуализатора
         boost::shared_ptr<pcl::visualization::PCLVisualizer> setup_vizualizer();

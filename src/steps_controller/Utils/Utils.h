@@ -8,7 +8,7 @@
 #define AR600_VISION_UTILS_H
 
 #include <pcl/point_cloud.h>
-//#include <boost/shared_ptr.hpp>
+
 
 class Utils
 {

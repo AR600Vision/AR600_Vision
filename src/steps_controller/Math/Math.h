@@ -10,6 +10,9 @@
 #include <cmath>
 #include <pcl/point_types.h>
 #include "settings.h"
+#include <steps_controller/Utils/Utils.h>
+
+#include <steps_controller/Utils/DataAccessFunctor.h>
 
 class Math
 {
@@ -36,6 +39,21 @@ public:
     }
 
     static bool IsPointNaN(pcl::Normal point);
+
+
+    /**
+     * Расчет матожидания (среднего)
+     * func - объект извлечения данных
+     * остальные параметры определяют область в двухмерном массове, в которой надо посчитать
+     *
+     * ВНИМАНИЕ: это НЕСТРОГИЕ границы [star_*; end_*]
+     */
+    static float Average(DataAccessFunctor* func, int start_x, int end_x, int start_y, int end_y);
+
+    //Расчт дисперсии
+    static float Dispetion(DataAccessFunctor* func, float average, int start_x, int end_x, int start_y, int end_y);
+    static float Dispetion(DataAccessFunctor* func,  int start_x, int end_x, int start_y, int end_y);
+
 };
 
 
