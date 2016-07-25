@@ -44,5 +44,5 @@ add_executable(steps_controller
         src/steps_controller/CloudTransforms/CloudTransforms.cpp
         src/steps_controller/StepsController/StepsController.cpp
         src/steps_controller/StepsController/StepsParams.h
-        src/steps_controller/Math/Math.cpp src/steps_controller/Utils/Utils.cpp src/steps_controller/Utils/Utils.h src/steps_controller/Utils/DataAccessFunctor.cpp src/steps_controller/Utils/DataAccessFunctor.h)
+        src/steps_controller/Math/Math.cpp src/steps_controller/Utils/Utils.cpp src/steps_controller/Utils/Utils.h src/steps_controller/Utils/DataAccessFunctor.cpp src/steps_controller/Utils/DataAccessFunctor.h src/steps_controller/StepsController/FootTargetFunctor.cpp src/steps_controller/StepsController/FootTargetFunctor.h)
 target_link_libraries (steps_controller ${PCL_LIBRARIES} ${catkin_LIBRARIES})

@@ -48,11 +48,11 @@ public:
      *
      * ВНИМАНИЕ: это НЕСТРОГИЕ границы [star_*; end_*]
      */
-    static float Average(DataAccessFunctor* func, int start_x, int end_x, int start_y, int end_y);
+    static float Average(const DataAccessFunctor* func, int start_x, int end_x, int start_y, int end_y);
 
     //Расчт дисперсии
-    static float Dispetion(DataAccessFunctor* func, float average, int start_x, int end_x, int start_y, int end_y);
-    static float Dispetion(DataAccessFunctor* func,  int start_x, int end_x, int start_y, int end_y);
+    static float StandartDeviation(const DataAccessFunctor *func, float average, int start_x, int end_x, int start_y, int end_y);
+    static float StandartDeviation(const DataAccessFunctor *func, int start_x, int end_x, int start_y, int end_y);
 
 };
 

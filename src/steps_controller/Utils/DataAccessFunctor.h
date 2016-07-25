@@ -21,7 +21,7 @@
 class DataAccessFunctor
 {
 public:
-    virtual float operator()(int column, int row)=0;
+    virtual float operator()(int column, int row) const =0;
 };
 
 //Массив float
@@ -35,7 +35,7 @@ public:
         this->height = height;
     }
 
-    float operator()(int column, int row)
+    float operator()(int column, int row) const
     {
         return array[row * this->width + column];
     }
@@ -55,8 +55,16 @@ public:
         this->cloud = cloud;
     }
 
-    float operator()(int column, int row)
+    float operator()(int column, int row) const
     {
+        /*std::cout<<column<<"; "<<row<<std::endl;
+        
+        if(column<0 || column>=cloud->width)
+            std::cout<<"column "<<column<<std::endl;
+
+        if(row<0 || row>=cloud->height)
+            std::cout<<"row "<<row<<std::endl;*/
+        
         PointT p = cloud->at(column, row);
         if(std::isnan(p.x) || std::isnan(p.y))
             return std::numeric_limits<float>::quiet_NaN();

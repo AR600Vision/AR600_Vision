@@ -56,12 +56,23 @@ public:
      * Так же синхронно с точками сдвигает нормали. Дело в том, что проще
      * организовать уже найденные нормали, чем найти в организованном облаке, это
      * почему-то не работает
+     * \param[in]  cloud - исходное облако точек
+     * \param[in]  normals - исходное облако нормалей
+     * \param[in]  step - требуемый шаг сетки
+     * \param[out] organized - новое организованное облако точек
+     * \param[out] organized_normals - новоое организованное облако нормалей
+     * \param[in]  search_x - размер зоны поиска по X
+     * \param[in]  search_y - размер зоны поиска по Y
+     * \param[in]  center_x - X центр зоны поиска
+     * \param[in]  center_y - Y центр зоны поиска
      */
     static void MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
                             pcl::PointCloud<pcl::Normal>::Ptr normals,
                             float step,
                             pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
-                            pcl::PointCloud<pcl::Normal>::Ptr& organized_normal);
+                            pcl::PointCloud<pcl::Normal>::Ptr& organized_normal,
+                            float search_x, float search_y,
+                            float center_x, float center_y);
 
 private:
 

@@ -3,6 +3,7 @@
 //
 
 #include "StepsController.h"
+#include "FootTargetFunctor.h"
 
 //using namespace StepsController;
 
@@ -26,7 +27,7 @@ namespace StepsController {
         steps_params.FootX = 0.40f;
         steps_params.FootY = 0.20f;
         steps_params.SearchX = 0.70f;
-        steps_params.SearchY = 0.20;
+        steps_params.SearchY = 0.40;
         steps_params.SearchZ=1;
 
 
@@ -82,6 +83,7 @@ namespace StepsController {
     {
 
         float z = 0;
+        float step = steps_params.DownsampleLeafSize;
 
         /* Сколько аллокаций тут делается:
          * 1. BoxFilter - выделяется память под новое облако
@@ -104,52 +106,27 @@ namespace StepsController {
         //Получаем организованное облако и организованные нормали
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr organized;
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
-        CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals, steps_params.DownsampleLeafSize , organized, organized_normals);
+        CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals,
+                                            step, organized, organized_normals,
+                                            steps_params.SearchX, steps_params.SearchY,
+                                            request.StepX, request.StepY);
 
         //Расчет углов нормалей к вертикали
         boost::shared_ptr<float[]> normal_angles;
         calculate_noraml_angls(organized_normals, normal_angles);
 
         //Раскрашиваем точки по углу нормале
-        color_cloud_normals(organized, normal_angles);
+        //color_cloud_normals(organized, normal_angles);
+
+
+        //Находим оптимальную точку наступания
+        FootTargetFunctor target_func(normal_angles, organized, steps_params, step);
+        target_func(0.1,0.1);
 
         //Убираем NaN, чтобы не глючил визуализатор
         Utils::ReplaceNaNs<pcl::PointXYZRGB>(organized, 0);
 
-        ArrayAccessFunctor angle_func(normal_angles, organized->width, organized->height);
-        PointCloudAccessFunctor<pcl::PointXYZRGB> cloud_func(organized);
-
-        /*float av_a=0, av_z=0;
-        int cnt = 0, cnt2=0;
-        for(int i = 0; i<organized->size(); i++)
-        {
-            pcl::PointXYZRGB p = organized->at(i);
-            if(!Math::IsPointNaN(p))
-            {
-                av_z += p.z;
-                cnt++;
-            }
-
-            if(!std::isnan(normal_angles[i]))
-            {
-                av_a += normal_angles[i];
-                cnt2++;
-            }
-
-            //std::cout<<angle<<";"<<p.x<<";"<<p.y<<";"<<p.z<<std::endl;
-        }
-
-        av_a /= cnt2;
-        av_z /= cnt;*/
-
-        float av_angle = Math::Average(&angle_func, 0, organized->width-1, 0, organized->height-1);
-        float av_height = Math::Average(&cloud_func, 0, organized->width-1, 0, organized->height-1);
-
-        float d_angle = Math::Dispetion(&angle_func, av_angle, 0, organized->width-1, 0, organized->height-1);
-        float d_height = Math::Dispetion(&cloud_func, av_height, 0, organized->width-1, 0, organized->height-1);
-
-        std::cout<<"M(a): "<<av_angle<<" D(a): "<<d_angle<<"; M(z): "<<av_height*100<<" D(z): "<<d_height*100<<std::endl;
-
+        //Визуализация
         viewer->removePointCloud("normals");
         viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
@@ -158,7 +135,10 @@ namespace StepsController {
         viewer->removePointCloud("organized");
         viewer->addPointCloud(organized, "organized");
         viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "organized");
-        //viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,0,0, "organized");
+
+        //Рисуем уровень среднего
+        //draw_cube(request.StepX, request.StepY, av_height, steps_params.SearchX, steps_params.SearchY, height_deviation,0,0,1, "average_plane");
+
 
         StepControllerResponse response;
         return response;

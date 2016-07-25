@@ -35,7 +35,8 @@
 namespace StepsController
 {
 
-    class StepsController {
+    class StepsController
+    {
     public:
         StepsController();
 

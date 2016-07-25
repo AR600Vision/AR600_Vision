@@ -98,7 +98,9 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
                                          pcl::PointCloud<pcl::Normal>::Ptr normals,
                                          float step,
                                          pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
-                                         pcl::PointCloud<pcl::Normal>::Ptr& organized_normal)
+                                         pcl::PointCloud<pcl::Normal>::Ptr& organized_normal,
+                                         float search_x, float search_y,
+                                         float center_x, float center_y)
 {
 
     if(cloud->size()!=normals->size())
@@ -107,17 +109,18 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
     }
 
     //Нахождение мин. и макс. точек
-    float x_min, x_max, y_min, y_max, z_min;
+    //float x_min, x_max, y_min, y_max;
+    float z_min;
 
     POINT_TYPE first_point = cloud->at(0);
-    x_min = x_max = first_point.x;
-    y_min = y_max = first_point.y;
+    /*x_min = x_max = first_point.x;
+    y_min = y_max = first_point.y;*/
     z_min = first_point.z;
 
     for(int i = 0; i<cloud->size(); i++)
     {
         POINT_TYPE point = cloud->at(i);
-        if(point.x>x_max)
+        /*if(point.x>x_max)
             x_max = point.x;
         if(point.x<x_min)
             x_min = point.x;
@@ -126,18 +129,21 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
         if(point.y>y_max)
             y_max=point.y;
         if(point.y<y_min)
-            y_min = point.y;
+            y_min = point.y;*/
 
         if(point.z<z_min)
             z_min = point.z;
     }
 
     //Определение размера облака
-    float cloud_width = x_max - x_min;
-    float cloud_height = y_max - y_min;
+    float cloud_width = search_x; //x_max - x_min;
+    float cloud_height = search_y;//y_max - y_min;
 
     int width = cloud_width / step +1;
     int height = cloud_height / step +1;
+
+    float x_min = center_x - search_x/2;
+    float y_min = center_y - search_y/2;
 
     float nan = std::numeric_limits<float>::quiet_NaN();
     pcl::PointXYZRGB null_point;
