@@ -54,7 +54,16 @@ private:
     ArrayAccessFunctor angle_func;
     PointCloudAccessFunctor<pcl::PointXYZRGB> cloud_func;
 
+    //Кидает exception если значение выходит за пределы диапазона
     void overflow_check(int value, int min, int max, std::string name) const;
+
+    /**
+     * Расчитывает значение функции Гаусса для параметра
+     * \param[x] - параметр
+     * \param[max] - максимальное откланение параметра от 0, при
+     *               котором функция будет почти 0
+     */
+    double gauss(float x, float max) const;
 };
 
 #endif //AR600_VISION_FOOTTARGETFUNCTOR_H

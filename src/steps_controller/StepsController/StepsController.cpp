@@ -22,7 +22,7 @@ namespace StepsController {
         steps_params.ShiftY = 0;
         steps_params.ShiftZ = 1.5;
         steps_params.RotX = 0;
-        steps_params.RotY = -30;
+        steps_params.RotY = -35;
         steps_params.NormalSearchRadius = 0.05f;
         steps_params.FootX = 0.40f;
         steps_params.FootY = 0.20f;
@@ -116,12 +116,38 @@ namespace StepsController {
         calculate_noraml_angls(organized_normals, normal_angles);
 
         //Раскрашиваем точки по углу нормале
-        //color_cloud_normals(organized, normal_angles);
+        color_cloud_normals(organized, normal_angles);
 
 
         //Находим оптимальную точку наступания
         FootTargetFunctor target_func(normal_angles, organized, steps_params, step);
-        target_func(0.1,0.1);
+        //target_func(-0.15,0);
+
+
+        //Пределы поиска (ступня не должна выходить за область поиска)
+        float x_max = steps_params.SearchX/2 - steps_params.FootX/2;
+        float x_min = -x_max;
+        float y_max = steps_params.SearchY/2 - steps_params.FootY/2;
+        float y_min = -y_max;
+
+        //Проходим по всем доступным точкам, вычисляем занчение функции
+        //и сохраняем в файл в формате X Y Z. Потом можно открыть при помощи
+        // GNUPLOT.
+        float search_step = 0.01;
+        std::ofstream fout;
+        fout.open("/home/garrus/plots/plot.txt", fstream::out);
+        for(float x = x_min; x<=x_max; x+=search_step)
+        {
+            for(float y = y_min; y<=y_max; y+=search_step)
+            {
+                float value = target_func(x,y);
+                fout<<x<<" "<<y<<" "<<value<<std::endl;
+
+            }
+        }
+
+        fout<<std::fflush;
+        fout.close();
 
         //Убираем NaN, чтобы не глючил визуализатор
         Utils::ReplaceNaNs<pcl::PointXYZRGB>(organized, 0);
@@ -149,6 +175,7 @@ namespace StepsController {
                                 boost::shared_ptr<float[]> & angles)
     {
         //TODO: корректно ли работает выделение массива? И будет ли он потом сам удалятс?
+        //TODO: заменить на std::vector
         angles = boost::make_shared<float[]>(normals->size());
 
         for(int i = 0; i<normals->size(); i++)
@@ -168,7 +195,7 @@ namespace StepsController {
         {
             float angle = normal_angles[i];
 
-            double max = 90;
+            double max = 20;
             uint8_t green, red;
 
             if(fabs(angle)>=max)

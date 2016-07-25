@@ -109,35 +109,22 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
     }
 
     //Нахождение мин. и макс. точек
-    //float x_min, x_max, y_min, y_max;
     float z_min;
 
     POINT_TYPE first_point = cloud->at(0);
-    /*x_min = x_max = first_point.x;
-    y_min = y_max = first_point.y;*/
     z_min = first_point.z;
 
     for(int i = 0; i<cloud->size(); i++)
     {
         POINT_TYPE point = cloud->at(i);
-        /*if(point.x>x_max)
-            x_max = point.x;
-        if(point.x<x_min)
-            x_min = point.x;
-
-
-        if(point.y>y_max)
-            y_max=point.y;
-        if(point.y<y_min)
-            y_min = point.y;*/
 
         if(point.z<z_min)
             z_min = point.z;
     }
 
     //Определение размера облака
-    float cloud_width = search_x; //x_max - x_min;
-    float cloud_height = search_y;//y_max - y_min;
+    float cloud_width = search_x;
+    float cloud_height = search_y;
 
     int width = cloud_width / step +1;
     int height = cloud_height / step +1;
