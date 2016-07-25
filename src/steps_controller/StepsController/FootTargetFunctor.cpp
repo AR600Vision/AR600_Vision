@@ -106,7 +106,7 @@ float FootTargetFunctor::operator()(float x, float y) const
     double angle_deviation_v = gauss(angle_deviation, 15);      //СКО угла              <- просто шикарно работает
     double height_deviation_v = gauss(height_deviation, 1);     //СКО высоты            <- непонятно
 
-    return height_deviation;
+    return angle_deviation_v;
 }
 
 void FootTargetFunctor::overflow_check(int value, int min, int max, std::string name) const

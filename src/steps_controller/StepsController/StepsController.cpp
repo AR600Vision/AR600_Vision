@@ -146,6 +146,29 @@ namespace StepsController {
             }
         }
 
+        /*float old=0, av_old=0;  //Пока и так сойдет
+
+        for(int i = 1; i<organized->width-1; i+=2)
+        {
+            for(int j = 1; j<organized->height-1; j+=2)
+            {
+                pcl::PointXYZRGB p = organized->at(i,j);
+
+                pcl::PointXYZRGB p1 = organized->at(i-1,j);
+                pcl::PointXYZRGB p2 = organized->at(i+1,j);
+                pcl::PointXYZRGB p3 = organized->at(i,j-1);
+                pcl::PointXYZRGB p4 = organized->at(i,j+1);
+
+                float dx = (p2.z - p1.z)/(p2.x-p1.x);
+                float dy = (p4.z - p3.z)/(p4.x-p3.y);
+                float d = sqrt(dx*dx+dy*dy);
+
+                fout<<p.x<<" "<<p.y<<" "<<p.z<<" "<<d<<std::endl;
+            }
+        }*/
+
+
+
         fout<<std::fflush;
         fout.close();
 

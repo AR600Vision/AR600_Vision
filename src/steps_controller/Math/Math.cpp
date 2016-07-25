@@ -91,3 +91,10 @@ float Math::StandartDeviation(const DataAccessFunctor *func, int start_x, int en
     float average = Average(func, start_x, end_x, start_y, end_y);
     return StandartDeviation(func, average, start_x, end_x, start_y, end_y);
 }
+
+//Дифф-ание функции двух переменных
+void Math::Differentiation(const DataAccessFunctor *func, int x, int y, float & diff_x, float & diff_y, float dx)
+{
+    diff_x = ((*func)(x-1,y)-(*func)(x+1,y))/(2*dx);
+    diff_y = ((*func)(x,y-1)-(*func)(x,y+1))/(2*dx);
+}

@@ -54,6 +54,8 @@ public:
     static float StandartDeviation(const DataAccessFunctor *func, float average, int start_x, int end_x, int start_y, int end_y);
     static float StandartDeviation(const DataAccessFunctor *func, int start_x, int end_x, int start_y, int end_y);
 
+    //Дифф-ание функции двух переменных
+    static void Differentiation(const DataAccessFunctor *func, int x, int y, float & diff_x, float & diff_y, float dx=1);
 };
 
 
