@@ -24,8 +24,8 @@ namespace StepsController {
         steps_params.RotX = 0;
         steps_params.RotY = -35;
         steps_params.NormalSearchRadius = 0.05f;
-        steps_params.FootX = 0.40f;
-        steps_params.FootY = 0.20f;
+        steps_params.FootX = 0.20f;
+        steps_params.FootY = 0.10f;
         steps_params.SearchX = 0.70f;
         steps_params.SearchY = 0.40;
         steps_params.SearchZ=1;
@@ -93,7 +93,6 @@ namespace StepsController {
          */
 
         draw_cube(request.StepX, request.StepY, z, steps_params.SearchX, steps_params.SearchY, steps_params.SearchZ, 1,0,0, search_cube_name);
-        draw_cube(request.StepX, request.StepY, z, steps_params.FootX, steps_params.FootY, 0.1, 0,1,0, foot_cube_name);
 
         //Обрезаем облако, чтобы было только область, в которой мы осуществляем поиск
         pcl::PointCloud<POINT_TYPE>::Ptr cropped_cloud = cloud_transforms.BoxFilter(current_cloud, request.StepX,
@@ -136,6 +135,9 @@ namespace StepsController {
         float search_step = 0.01;
         std::ofstream fout;
         fout.open("/home/garrus/plots/plot.txt", fstream::out);
+
+        float max=target_func(0,0), _x_max=0, _y_max=0;
+
         for(float x = x_min; x<=x_max; x+=search_step)
         {
             for(float y = y_min; y<=y_max; y+=search_step)
@@ -143,8 +145,19 @@ namespace StepsController {
                 float value = target_func(x,y);
                 fout<<x<<" "<<y<<" "<<value<<std::endl;
 
+                if(value>max)
+                {
+                    max=value;
+                    _x_max=x;
+                    _y_max=y;
+                }
             }
         }
+
+        //fout<<_x_max<<" "<<_y_max<<" 2"<<std::endl;
+
+        std::cout<<_x_max<<" "<<_y_max<<std::endl;
+        draw_cube(request.StepX+_x_max, request.StepY-_y_max, z, steps_params.FootX, steps_params.FootY, 0.1, 0,0,1, foot_cube_name);
 
         /*float old=0, av_old=0;  //Пока и так сойдет
 

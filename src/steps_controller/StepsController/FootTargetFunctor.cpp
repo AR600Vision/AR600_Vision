@@ -75,7 +75,7 @@ float FootTargetFunctor::operator()(float x, float y) const
     float angle_deviation = Math::StandartDeviation(&angle_func, av_angle, start_x, end_x, start_y, end_y);
     float height_deviation = Math::StandartDeviation(&cloud_func, av_height, start_x, end_x, start_y, end_y);
 
-    std::cout<<"M(a): "<<av_angle<<" σ(a): "<<angle_deviation<<"; M(z): "<<av_height<<" σ(z): "<<height_deviation<<std::endl;
+    //std::cout<<"M(a): "<<av_angle<<" σ(a): "<<angle_deviation<<"; M(z): "<<av_height<<" σ(z): "<<height_deviation<<std::endl;
 
     /* Сама целевая функция
      * Лучше когда:
@@ -100,13 +100,23 @@ float FootTargetFunctor::operator()(float x, float y) const
     // Части целевой функции. Параметр - максимальное значение аргумента
     // , при котором значение функции должно стать мало
     // TODO: нормализировать
-    double dist_v = gauss(dist, 0.1);                           //Расстояние от центра
-    double av_angle_v = gauss(av_angle, 20);                    //Средний угол
-    double av_height_v = gauss(av_height, 0.1);                 //Средняя высота
-    double angle_deviation_v = gauss(angle_deviation, 15);      //СКО угла              <- просто шикарно работает
-    double height_deviation_v = gauss(height_deviation, 1);     //СКО высоты            <- непонятно
+    double dist_v = log(2*gauss(dist, 0.1));                           //Расстояние от центра
+    double av_angle_v = log(2*gauss(av_angle, 30));                    //Средний угол
+    double av_height_v = log(2*gauss(av_height, 0.2));                 //Средняя высота
+    double angle_deviation_v = log(2*gauss(angle_deviation, 15));      //СКО угла              <- просто шикарно работает
+    double height_deviation_v = log(2*gauss(height_deviation, 1));     //СКО высоты            <- непонятно
 
-    return angle_deviation_v;
+    //Веса
+    double dist_v_w = 0.1;
+    double av_angle_v_w = 2;
+    double av_height_v_w = 1;
+    double angle_deviation_v_w = 1;
+
+    //Хоть я и атеист, но с божьей помощью оно работает
+    return  dist_v_w * dist_v +
+            angle_deviation_v_w*angle_deviation_v +
+            av_angle_v_w * av_angle_v +
+            av_height_v_w * av_height_v;
 }
 
 void FootTargetFunctor::overflow_check(int value, int min, int max, std::string name) const
@@ -120,5 +130,13 @@ double FootTargetFunctor::gauss(float x, float max) const
 {
     //Воспользуемся правилом трех сигм
     float sigma = max/3;
-    return 1/sigma*exp(-x*x/(2*sigma*sigma));
+    float val =  1/sigma*exp(-x*x/(2*sigma*sigma));
+
+    /* Нормализация
+     * при x=0 (max) val = 1/sigma
+     * Домножим на sigma
+     */
+    return sigma*val;
+
+
 }
