@@ -40,10 +40,16 @@ public:
      *  - СКО высоты и откланения нормалей от вертикали
      *  - откланение от запланированной точки наступания (?)
      *
-     *  \param[in] x - x-координата центра стопы относительно центра области поиска
-     *  \param[in] y - y-координата центра стопы относительно центра области поиска
+     *  \param[in]  x - x-координата центра стопы относительно центра области поиска
+     *  \param[in]  y - y-координата центра стопы относительно центра области поиска
+     *  \param[out] av_height - средняя высота
+     *  \param[out] av_angle - средний угол
+     *  \param[out] height_deviation - СКО высоты
+     *  \param[out] angle_deviation - СКО угла
      */
-    float operator()(float x, float y) const;
+    float operator()(float x, float y,
+                     float & av_height, float & av_angle,
+                     float & height_deviation, float & angle_deviation) const;
 
 private:
     boost::shared_ptr<float[]> normal_angles;

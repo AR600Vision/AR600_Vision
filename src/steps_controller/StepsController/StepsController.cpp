@@ -129,20 +129,23 @@ namespace StepsController {
         float y_max = steps_params.SearchY/2 - steps_params.FootY/2;
         float y_min = -y_max;
 
+        float av_height, av_angle, height_deviation, angle_deviation;
+
         //Проходим по всем доступным точкам, вычисляем занчение функции
         //и сохраняем в файл в формате X Y Z. Потом можно открыть при помощи
         // GNUPLOT.
+        // Заодно и максимум найдем
         float search_step = 0.01;
         std::ofstream fout;
         fout.open("/home/garrus/plots/plot.txt", fstream::out);
 
-        float max=target_func(0,0), _x_max=0, _y_max=0;
+        float max=target_func(0,0,av_height, av_angle, height_deviation, angle_deviation), _x_max=0, _y_max=0;
 
         for(float x = x_min; x<=x_max; x+=search_step)
         {
             for(float y = y_min; y<=y_max; y+=search_step)
             {
-                float value = target_func(x,y);
+                float value = target_func(x,y, av_height, av_angle, height_deviation, angle_deviation);
                 fout<<x<<" "<<y<<" "<<value<<std::endl;
 
                 if(value>max)
@@ -154,32 +157,11 @@ namespace StepsController {
             }
         }
 
-        //fout<<_x_max<<" "<<_y_max<<" 2"<<std::endl;
 
-        std::cout<<_x_max<<" "<<_y_max<<std::endl;
-        draw_cube(request.StepX+_x_max, request.StepY-_y_max, z, steps_params.FootX, steps_params.FootY, 0.1, 0,0,1, foot_cube_name);
+        target_func(_x_max,_y_max,av_height, av_angle, height_deviation, angle_deviation);
 
-        /*float old=0, av_old=0;  //Пока и так сойдет
-
-        for(int i = 1; i<organized->width-1; i+=2)
-        {
-            for(int j = 1; j<organized->height-1; j+=2)
-            {
-                pcl::PointXYZRGB p = organized->at(i,j);
-
-                pcl::PointXYZRGB p1 = organized->at(i-1,j);
-                pcl::PointXYZRGB p2 = organized->at(i+1,j);
-                pcl::PointXYZRGB p3 = organized->at(i,j-1);
-                pcl::PointXYZRGB p4 = organized->at(i,j+1);
-
-                float dx = (p2.z - p1.z)/(p2.x-p1.x);
-                float dy = (p4.z - p3.z)/(p4.x-p3.y);
-                float d = sqrt(dx*dx+dy*dy);
-
-                fout<<p.x<<" "<<p.y<<" "<<p.z<<" "<<d<<std::endl;
-            }
-        }*/
-
+        std::cout<<"("<<_x_max<<"; "<<_y_max<<"); "<<"height: "<<av_height<<"; angle: "<<av_angle<<std::endl;
+        draw_cube(request.StepX+_x_max, request.StepY-_y_max, av_height+0.05, steps_params.FootX, steps_params.FootY, 0.1, 0,0,1, foot_cube_name);
 
 
         fout<<std::fflush;

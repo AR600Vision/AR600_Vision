@@ -14,7 +14,9 @@ FootTargetFunctor::FootTargetFunctor(boost::shared_ptr<float[]> normal_angles, p
     this->step = step;
 }
 
-float FootTargetFunctor::operator()(float x, float y) const
+float FootTargetFunctor::operator()(float x, float y,
+                                    float & av_height, float & av_angle,
+                                    float & height_deviation, float & angle_deviation) const
 {
     int start_x, end_x, start_y, end_y;
 
@@ -69,11 +71,11 @@ float FootTargetFunctor::operator()(float x, float y) const
 
     //Расчет параметров
     //TODO: если плоскость под углом ско высот будет большое, но это все равно плоскость!
-    float av_angle = Math::Average(&angle_func, start_x, end_x, start_y, end_y);
-    float av_height = Math::Average(&cloud_func, start_x, end_x, start_y, end_y);
+    av_angle = Math::Average(&angle_func, start_x, end_x, start_y, end_y);
+    av_height = Math::Average(&cloud_func, start_x, end_x, start_y, end_y);
 
-    float angle_deviation = Math::StandartDeviation(&angle_func, av_angle, start_x, end_x, start_y, end_y);
-    float height_deviation = Math::StandartDeviation(&cloud_func, av_height, start_x, end_x, start_y, end_y);
+    angle_deviation = Math::StandartDeviation(&angle_func, av_angle, start_x, end_x, start_y, end_y);
+    height_deviation = Math::StandartDeviation(&cloud_func, av_height, start_x, end_x, start_y, end_y);
 
     //std::cout<<"M(a): "<<av_angle<<" σ(a): "<<angle_deviation<<"; M(z): "<<av_height<<" σ(z): "<<height_deviation<<std::endl;
 
