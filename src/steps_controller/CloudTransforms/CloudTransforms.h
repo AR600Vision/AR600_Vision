@@ -66,13 +66,13 @@ public:
      * \param[in]  center_x - X центр зоны поиска
      * \param[in]  center_y - Y центр зоны поиска
      */
-    static void MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
-                            pcl::PointCloud<pcl::Normal>::Ptr normals,
-                            float step,
-                            pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
-                            pcl::PointCloud<pcl::Normal>::Ptr& organized_normal,
-                            float search_x, float search_y,
-                            float center_x, float center_y);
+    static bool MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
+                                   pcl::PointCloud<pcl::Normal>::Ptr normals,
+                                   float step,
+                                   pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
+                                   pcl::PointCloud<pcl::Normal>::Ptr& organized_normal,
+                                   float search_x, float search_y,
+                                   float center_x, float center_y);
 
 private:
 

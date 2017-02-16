@@ -20,9 +20,9 @@ namespace StepsController {
         steps_params.DownsampleLeafSize = 0.01f;
         steps_params.ShiftX = 0;
         steps_params.ShiftY = 0;
-        steps_params.ShiftZ = 1.5;
+        steps_params.ShiftZ = 1;
         steps_params.RotX = 0;
-        steps_params.RotY = -35;
+        steps_params.RotY = -28;
         steps_params.NormalSearchRadius = 0.05f;
         steps_params.FootX = 0.20f;
         steps_params.FootY = 0.10f;
@@ -105,10 +105,18 @@ namespace StepsController {
         //Получаем организованное облако и организованные нормали
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr organized;
         pcl::PointCloud<pcl::Normal>::Ptr organized_normals;
-        CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals,
+
+
+        if(!CloudTransforms::MakeOrganizedCloud(cropped_cloud, normals,
                                             step, organized, organized_normals,
                                             steps_params.SearchX, steps_params.SearchY,
-                                            request.StepX, request.StepY);
+                                            request.StepX, request.StepY))
+        {
+            //Облако пустое
+            StepControllerResponse response;
+            std::cout<<"Cloud is empty!";
+            return response;
+        }
 
         //Расчет углов нормалей к вертикали
         boost::shared_ptr<float[]> normal_angles;
@@ -116,7 +124,6 @@ namespace StepsController {
 
         //Раскрашиваем точки по углу нормале
         color_cloud_normals(organized, normal_angles);
-
 
         //Находим оптимальную точку наступания
         FootTargetFunctor target_func(normal_angles, organized, steps_params, step);
@@ -139,6 +146,7 @@ namespace StepsController {
         std::ofstream fout;
         fout.open("/home/garrus/plots/plot.txt", fstream::out);
 
+
         float max=target_func(0,0,av_height, av_angle, height_deviation, angle_deviation), _x_max=0, _y_max=0;
 
         for(float x = x_min; x<=x_max; x+=search_step)
@@ -156,7 +164,6 @@ namespace StepsController {
                 }
             }
         }
-
 
         target_func(_x_max,_y_max,av_height, av_angle, height_deviation, angle_deviation);
 

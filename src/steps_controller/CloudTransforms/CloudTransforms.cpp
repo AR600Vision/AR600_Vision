@@ -94,7 +94,7 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::BoxFilter(pcl::PointCloud<POIN
 
 
 //Делает из неорганизованного облака организованное
-void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
+bool CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
                                          pcl::PointCloud<pcl::Normal>::Ptr normals,
                                          float step,
                                          pcl::PointCloud<pcl::PointXYZRGB>::Ptr& organized,
@@ -107,6 +107,10 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
     {
         throw ("The number of points differs from the number of normals!");
     }
+
+    int size = cloud->size();
+    if(cloud->size()==0)
+        return false;
 
     //Нахождение мин. и макс. точек
     float z_min;
@@ -172,14 +176,26 @@ void CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
          * с разным z.
          * Надо взять самую верхнюю.
          */
+
         if(point.z>current_point.z)
         {
             organized->at(column, row).x = point.x;
             organized->at(column, row).y = point.y;
             organized->at(column, row).z = point.z;
 
+            //std::cout<<"column: "<<column<<", row: "<<row<<" ("<<point.x<<", "<<point.y<<", "<<point.z<<")\n";
+
             organized_normal->at(column, row) = normal;
         }
+
+        /*for(int i = 0; i<organized->size(); i++)
+        {
+            pcl::PointXYZRGB point = organized->at(i);
+            std::cout<<point.x << ' '<<point.y<<point.z<<'\n';
+        }*/
+
     }
+
+    return true;
 
 }
