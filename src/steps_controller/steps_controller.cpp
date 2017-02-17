@@ -84,7 +84,7 @@ void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input)
  */
 bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res)
 {
-    ROS_INFO("Request: StepX=%f StepY=%f",req.StepX, req.StepY);
+    //ROS_INFO("Request: StepX=%f StepY=%f",req.StepX, req.StepY);
 
     StepsController::StepControllerRequest request;
     request.StepX = req.StepX;
