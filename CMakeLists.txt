@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ar600_vision)
 
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -29,7 +30,7 @@ generate_messages(
 catkin_package()
 
 
-set(CMAKE_CXX_FLAGS "")
+set(CMAKE_CXX_FLAGS "-Wno-deprecated")
 
 include_directories(${PCL_INCLUDE_DIRS}
         ${catkin_INCLUDE_DIRS}

@@ -28,7 +28,7 @@
 
 using namespace StepsController;
 
-const char point_cloud_topic[] = "/camera/depth/points";
+const char point_cloud_topic[] = "/rtabmap/cloud_map";
 
 StepsController::StepsController* steps_controller;
 
@@ -46,8 +46,7 @@ int main(int argc, char** argv)
     //Инициализация ноды ROS
     ros::init(argc, argv, "StepsController");
 
-    //TODO: Я не разобрался с этими неймспейсами, поэтому задам жестко
-    ros::NodeHandle n("/ar600_vision");
+    ros::NodeHandle n;
 
     ROS_INFO("%s", "AR-600/steps_controller started");
 
@@ -117,6 +116,7 @@ bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsCon
 bool GetParams(ros::NodeHandle & nh, StepsParams & params)
 {
     bool isOk = true;
+    ROS_INFO("Namespace: %s", nh.getNamespace().c_str());
 
     isOk &= nh.getParam("DownsampleLeafSize", params.DownsampleLeafSize);
     isOk &= nh.getParam("NormalSearchRadius", params.NormalSearchRadius);
