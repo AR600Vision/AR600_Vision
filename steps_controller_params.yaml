@@ -1,0 +1,7 @@
+/ar600_vision/DownsampleLeafSize: 0.01 # Уменьшение разрешения облака
+/ar600_vision/NormalSearchRadius: 0.05 # Радиус поиска нормалей
+/ar600_vision/FootX: 0.20              # Длина ступни
+/ar600_vision/FootY: 0.10              # Ширина ступни
+/ar600_vision/SearchX: 0.70            # Длина зоны допуска
+/ar600_vision/SearchY: 0.40            # Ширина зоны допуска
+/ar600_vision/SearchZ: 1.00            # Высота зоны допуска

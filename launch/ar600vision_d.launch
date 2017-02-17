@@ -1,0 +1,13 @@
+<launch>
+    <group>
+        <param name="DownsampleLeafSize" value="0.01"/>   <!-- Параметр уменьшения числа точек в облаке -->
+        <param name="NormalSearchRadius" value="0.05"/>   <!-- Радиус поиска нормалей -->
+        <param name="FootX" value="0.20"/>                <!-- Длина ступни -->
+        <param name="FootY" value="0.10"/>                <!-- Ширина ступни -->
+        <param name="SearchX" value="0.70"/>              <!-- Длина зоны допуска -->
+        <param name="SearchY" value="0.40"/>              <!-- Ширина зоны допуска -->
+        <param name="SearchZ" value="1.00"/>              <!-- Высота зоны допуска -->
+
+        <node name="steps_controller" pkg="ar600_vision" type="steps_controller" output="screen"/>
+    </group>
+</launch>

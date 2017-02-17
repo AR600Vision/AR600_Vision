@@ -4,6 +4,8 @@
 
 #include "FootTargetFunctor.h"
 
+using namespace StepsController;
+
 FootTargetFunctor::FootTargetFunctor(boost::shared_ptr<float[]> normal_angles, pcl::PointCloud<pcl::PointXYZRGB>::Ptr  cloud, StepsParams step_params, float step) :
         angle_func(normal_angles, cloud->width, cloud->height),
         cloud_func(cloud)
