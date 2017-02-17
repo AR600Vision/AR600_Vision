@@ -38,16 +38,27 @@ namespace StepsController
     class StepsController
     {
     public:
-        StepsController();
+        /**
+         * Создает объект StepsController
+         *
+         * @param params константные параметр расчета шага
+         */
+        StepsController(StepsParams params);
 
         /**
          * Принимает очередное изменения облака точек
          * и обрабатывает его
+         *
+         * @param pointCloud2 облако точек окружающей обстановки
          */
         void UpdateFrame(pcl::PCLPointCloud2::Ptr pointCloud2);
 
         /**
          * Запрос на проверку области на пригодность шага
+         *
+         * @param request параметры запроса - планируемые координаты
+         *                шага
+         * @return
          */
         StepControllerResponse CalculateStep(StepControllerRequest request);
 
@@ -61,9 +72,8 @@ namespace StepsController
 
     private:
 
-        //Константы
+        //Константы имен для визуализатора
         static const std::string point_cloud_name;
-        static const std::string search_cloud_name;
         static const std::string search_cube_name;
         static const std::string foot_cube_name;
 

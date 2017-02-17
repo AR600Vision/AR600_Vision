@@ -103,6 +103,9 @@ bool CloudTransforms::MakeOrganizedCloud(pcl::PointCloud<POINT_TYPE>::Ptr cloud,
                                          float center_x, float center_y)
 {
 
+    int size1 = cloud->size();
+    int size2 = normals->size();
+
     if(cloud->size()!=normals->size())
     {
         throw ("The number of points differs from the number of normals!");

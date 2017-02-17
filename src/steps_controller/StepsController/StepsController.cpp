@@ -7,29 +7,30 @@
 
 //using namespace StepsController;
 
-namespace StepsController {
+namespace StepsController
+{
 
     const std::string StepsController::point_cloud_name = "point_cloud";
-    const std::string StepsController::search_cloud_name = "search_point_cloud";
     const std::string StepsController::search_cube_name = "search_cube";
     const std::string StepsController::foot_cube_name = "foot_cube";
 
 
-    StepsController::StepsController()
+    StepsController::StepsController(StepsParams params)
     {
-        steps_params.DownsampleLeafSize = 0.01f;
+        this->steps_params = params;
+
+        //steps_params.DownsampleLeafSize = 0.01f;
         steps_params.ShiftX = 0;
         steps_params.ShiftY = 0;
         steps_params.ShiftZ = 1;
         steps_params.RotX = 0;
         steps_params.RotY = -28;
-        steps_params.NormalSearchRadius = 0.05f;
-        steps_params.FootX = 0.20f;
-        steps_params.FootY = 0.10f;
-        steps_params.SearchX = 0.70f;
-        steps_params.SearchY = 0.40;
-        steps_params.SearchZ=1;
-
+        //steps_params.NormalSearchRadius = 0.05f;
+        //steps_params.FootX = 0.20f;
+        //steps_params.FootY = 0.10f;
+        //steps_params.SearchX = 0.70f;
+        //steps_params.SearchY = 0.40;
+        //steps_params.SearchZ=1;
 
         viewer = setup_vizualizer();
 
