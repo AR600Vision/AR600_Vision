@@ -2,48 +2,26 @@ cmake_minimum_required(VERSION 2.8.3)
 project(ar600_vision)
 
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
+# Подключение общих для всего пакета зависимостей
+# Не надо подключать их повторно
+# Некоторые зависимости не удается подключить только в ноде  - щито поделать
 find_package(catkin REQUIRED COMPONENTS
-  pcl_conversions
-  roscpp
-  sensor_msgs
-  std_msgs
-  message_generation
-)
-
-find_package(PCL 1.2 REQUIRED)
-
-# Сервисы
-add_service_files(
-        FILES
-        StepsController.srv
-)
-
-generate_messages(
-        DEPENDENCIES
+        roscpp
         std_msgs
-)
+        sensor_msgs             # не подключается
+        message_generation      # не подключается
+        )
 
-## Declare a catkin package
+include_directories(
+        ${catkin_INCLUDE_DIRS}
+        src)
+
+# Ноды
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
+
+# Declare a catkin package
 catkin_package()
 
 
 set(CMAKE_CXX_FLAGS "-Wno-deprecated")
-
-include_directories(${PCL_INCLUDE_DIRS}
-        ${catkin_INCLUDE_DIRS}
-        src)
-
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
-#TODO: Добавлять исходники в CMakeList.txt как-то более удобно
-add_executable(steps_controller
-        src/steps_controller/steps_controller.cpp
-        src/steps_controller/CloudTransforms/CloudTransforms.cpp
-        src/steps_controller/StepsController/StepsController.cpp
-        src/steps_controller/StepsController/StepsParams.h
-        src/steps_controller/Math/Math.cpp src/steps_controller/Utils/Utils.cpp src/steps_controller/Utils/Utils.h src/steps_controller/Utils/DataAccessFunctor.cpp src/steps_controller/Utils/DataAccessFunctor.h src/steps_controller/StepsController/FootTargetFunctor.cpp src/steps_controller/StepsController/FootTargetFunctor.h)
-target_link_libraries (steps_controller ${PCL_LIBRARIES} ${catkin_LIBRARIES})
