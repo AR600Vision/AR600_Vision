@@ -1,200 +1,202 @@
 /*!
  *  \brief     Mediator node for AR600 CV project
- *  \author    Titov Alex
+ *  \author    Titov Alex, Markov Alex
  *  \date      2017
  *  \warning   Improper use can crash your application
  *  \copyright GNU Public License.
+ *
+ *  Принимает запросы по UDP от ФРУНДа, асинхронно вызывает
+ *  ноды, возвращает ответы
+ *
+ *  -------------------- ФОРМАТ ДАННЫХ --------------------
+ *  данные пеередаются в виде массива double
+ *
+ *  Запрос:
+ *  |---------|------|------ ... ---|
+ *  | node id | rviz | data         |
+ *  |---------|------|------ ... ---|
+ *
+ *  node id      номер вызываемой ноды
+ *  rviz         входные данные беруться из запроса (0) или из RVIZ (1) (или еще откуда-нибудь)
+ *
+ *  Ответ:
+ *  |---------|--------|--------|--------------|------ ... ---|
+ *  | node id | status | actual | elapsed time | data         |
+ *  |---------|--------|--------|--------------|------ ... ---|
+ *
+ *  node id       Номер ноды, которая отвечает (такой же, как в запросе
+ *  status        Код ошибки
+ *  actual        Является ли эти данные ответом на текущий (1) или один из предыдущих (0)
+ *                запросов. В этой версии ответ в пределах одного запроса невозможен, всегда 0
+ *  elapsed time  Время, прошедшее с момента запроса. В этой версии всегда 0.
+ *
+ *  КОДЫ ОШИБОК:
+ *   0     Без ошибок
+ *   1     Неверный формат пакета
+ *   2     Запрошенная нода не найдена
+ *   3     Неизвестная внутренняя ошибка в ноде
  */
-// TODO A callbacks should stay as simple and fast as possible
+
 #include <ros/ros.h>
 #include <nav_msgs/Path.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <mutex>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <thread>
 
 
-/// Storage for response, with sinchronization
-class NavigationBuffer
+#include "NodeMediator/NodeMediatorBase.h"
+#include "NodeMediator/StepsMediator/StepsMediator.h"
+#include "NodeMediator/PathMediator/PathMediator.h"
+
+/*!
+ * Коды ошибок
+ */
+enum ERRORS
 {
-public:
-    NavigationBuffer()
-    {
-        path = nav_msgs::Path(); // todo add some poses to here
-        calc_finished = true;
-    }
-
-    void SetData(const nav_msgs::Path new_data)
-    {
-        m.lock();
-        path = new_data;
-        calc_finished = true;
-        m.unlock();
-    }
-
-    nav_msgs::Path GetData()
-    {
-        std::lock_guard <std::mutex> l(m);
-        return path;
-    }
-
-    // lock guard http://stackoverflow.com/questions/16522889/mutex-when-returning-object-value
-    bool isCalcFinished()
-    {
-        std::lock_guard <std::mutex> l(m);
-        return calc_finished;
-    }
-
-    // http://stackoverflow.com/questions/2650458/does-access-write-to-boolean-object-needs-synchronization
-    void startCalc()
-    {
-        m.lock();
-        calc_finished = false;
-        m.unlock();
-    }
-private:
-    nav_msgs::Path path;
-    bool calc_finished;
-    std::mutex m;
+    NO_ERROR,
+    INVALID_PACKAGE_FORMAT,
+    NODE_NOT_FOUND,
+    NODE_INTERNAL_ERROR
 };
 
-/// Contains callback and buffer
-/// Converts request from double array to required format and sends it to processing node
-/// Converts response to double vector to send to FRUND
-class NavigationCommunicator
-{
-public:
-    NavigationCommunicator(ros::NodeHandle & n)
-    {
-        path_subscriber = n.subscribe("/footstep_planner/path", 1, &NavigationCommunicator::callback, this);
-        goal_publisher = n.advertise<geometry_msgs::PoseStamped>("goal", 1, true);
-    }
+/*!
+ * Функция слушания
+ * @param port порт слушания
+ * @param maxBufferSize максимальный размер буфера приема, отправки
+ * @param mediators список обработчиков
+ */
+void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & mediators);
 
-    /// Make request from double array and send it to processing node
-    /// Here communicator parses input and get what he want
-    void SendReqest(double * reqest_buffer)
-    {
-        int rviz_control = int(reqest_buffer[0]);
-        if (buffer.isCalcFinished() && !rviz_control)
-        {
-            geometry_msgs::PoseStamped goal;
-            goal.pose.position.x = reqest_buffer[1];
-            goal.pose.position.y = reqest_buffer[2];
-            // fixme work with orientation. while now it's zero
-
-            goal_publisher.publish(goal);
-        }
-    }
-
-    /// Converts response to double vector
-    std::vector<double> GetData()
-    {
-        nav_msgs::Path path = buffer.GetData();
-        int steps_count = path.poses.size();
-        std::vector<double> response_buffer(2*steps_count+1);
-
-        response_buffer[0] = steps_count;
-        for (int i = 0; i < steps_count; i++)
-        {
-            response_buffer[1 + 2*i] = path.poses[i].pose.position.x;
-            response_buffer[1 + 2*i + 1] = path.poses[i].pose.position.y;
-            // TODO are we need their orientation or something like that?
-        }
-    }
-
-    void callback(nav_msgs::Path path)
-    {
-        buffer.SetData(path);
-    }
-private:
-    ros::Publisher goal_publisher;
-    ros::Subscriber path_subscriber;
-    NavigationBuffer buffer;
-};
-
-/// Initializes communicators
-/// Sends and recvs data from FRUND via sockets
-/// Transfers data to communicators
-struct MediatorNode
-{
-public:
-    MediatorNode() : nav(n), spinner(2)
-    {
-
-    }
-    ~MediatorNode()
-    {
-        ros::waitForShutdown();
-    }
-
-    /// Connect and start spinner
-    bool prepare()
-    {
-        if (!connect("127.0.0.1", 50000))
-            return false;
-
-        spinner.start();
-        return true;
-    }
-
-
-    void operate()
-    {
-        while(ros::ok())
-        {
-            /// Recv data from socket
-            double request_buffer[100];
-            socklen_t slen_req = sizeof(si_frund);
-            recvfrom(sock_desc, request_buffer, 4*sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t *)&slen_req);
-
-            /// Give data to communicators
-            nav.SendReqest(request_buffer);
-            // TODO viz.SendReqest(request_buffer);
-
-            /// Get response from communicators
-            std::vector<double> response_buffer = nav.GetData();
-            // TODO add viz response buffer here and split them here into one, then send via sockets
-
-            int size = response_buffer.size()*sizeof(double);
-            socklen_t slen_res = sizeof(si_frund);
-            sendto(sock_desc, response_buffer.data(), size, 0, (sockaddr *)&si_frund, (socklen_t)slen_res);
-        }
-    }
-
-private:
-    bool connect(char * ip, int port)
-    {
-        /// Create socket
-        sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (sock_desc == -1)
-        {
-            ROS_ERROR("Can't create socket");
-            return false;
-        }
-
-        si_frund.sin_family = AF_INET;
-        si_frund.sin_port = htons(port);
-        si_frund.sin_addr.s_addr = inet_addr(ip);
-        return true;
-    }
-
-    NavigationCommunicator nav;
-    struct sockaddr_in si_frund;
-    int sock_desc;
-    ros::NodeHandle n;
-    ros::AsyncSpinner spinner;
-};
-
+/*!
+ * Отправляет код ошибки
+ * @param sock_desc
+ * @param si_frund
+ */
+void sendError(int sock_desc, sockaddr_in si_frund, ERRORS error);
 
 int main(int argc, char ** argv)
 {
+
     ros::init(argc, argv, "ar600e_receiver_node");
+    ros::NodeHandle nh;
 
-    MediatorNode n;
-    if (!n.prepare()) // TODO make it a cycle maybe
-        return 1;
+    ROS_INFO("Receiver node started...");
 
-    ROS_INFO("Receiver node was started successfully");
+    //Заполняем список медиаторов
+    std::vector<NodeMediatorBase*> mediators =
+    {
+        new StepsMediator(nh, 1000),
+        new PathMediator(nh, 1000)
+    };
 
-    n.operate();
+
+    std::thread listenThread(receiveFunc, 12833, 1000, std::ref(mediators));
+    listenThread.detach();
+
+    ros::spin();
+    return 0;
+}
+
+//Функция слушания
+void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & mediators)
+{
+    sockaddr_in si_frund;
+    sockaddr_in si_me;
+
+    /// Create socket
+    int sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sock_desc == -1) {
+        ROS_ERROR("Can't create socket");
+        return;
+    }
+
+    si_me.sin_family = AF_INET;
+    si_me.sin_port = htons(port);
+    si_me.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if(bind(sock_desc, (sockaddr*)&si_me, sizeof(si_me)) == -1)
+    {
+        ROS_ERROR("Can't bind socket");
+        return;
+    }
+
+    //Буфер для данных
+    //Пока я использую один буфер, но можно и два
+    double* buffer = new double[maxBufferSize];
+    int sendCount;
+
+    ROS_INFO("UDP listen thread started...");
+
+    //Цикл приема запросов
+    while (true)
+    {
+        //Принимаем данные
+        socklen_t slen_req = sizeof(si_frund);
+        ssize_t recvSize = recvfrom(sock_desc, buffer, maxBufferSize * sizeof(double), 0, (sockaddr *)&si_frund, &slen_req);
+
+        ROS_INFO("Received data");
+
+        //Проверка корректности данных
+        if(recvSize == -1)
+        {
+            ROS_ERROR("Error receiving data.Error code: %d",errno);
+            continue;
+        }
+
+        if(recvSize <=3)
+        {
+            ROS_ERROR("Input request has invalid package format");
+            sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
+            continue;
+        }
+
+        int commandId = buffer[0];
+        if(commandId <0 || commandId >= mediators.size())
+        {
+            ROS_ERROR("Command id %d is out of range", commandId);
+            sendError(sock_desc, si_frund, NODE_NOT_FOUND);
+            continue;
+        }
+
+        ROS_INFO("Starting NodeMediator #%d",commandId);
+
+        //Обработка
+        try
+        {
+            //+1 - отрезаем nodeId
+            mediators[commandId]->SendRequest(buffer+1, recvSize);
+
+            //TODO: таймоут
+
+            //+4 потому что отрезаем nodeId, status, is actual, elapsed time
+            sendCount = mediators[commandId]->ReadResponse(buffer + 4, maxBufferSize);
+        }
+        catch(std::exception ex)
+        {
+            ROS_ERROR("Node internal error in node: %s",ex.what());
+            sendError(sock_desc, si_frund, NODE_INTERNAL_ERROR);
+        }
+
+        //Заполняем служебную информацию
+        buffer[0] = commandId;
+        buffer[1] = (double)NO_ERROR;
+        buffer[2] = 0; //Не 0 только при реализации таймоута
+        buffer[3] = 0; //Не поддерживается
+
+        socklen_t slen_res = sizeof(si_frund);
+        if(sendto(sock_desc, buffer, (sendCount + 4) * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
+            ROS_INFO("Sent response");
+        else
+            ROS_ERROR("Error sending response. Error code: %d", errno);
+
+    }
+}
+
+//Отправляет код ошибки
+void sendError(int sock_desc, sockaddr_in si_frund, ERRORS error)
+{
+    socklen_t slen_res = sizeof(si_frund);
+    double errorDouble = (double)error;
+    sendto(sock_desc, &errorDouble, sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res);
 }
