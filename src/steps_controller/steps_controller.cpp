@@ -5,12 +5,21 @@
  *
  *  Принимаемые топики:
  *  - Облако точек с камеры глубины (/depth/points) - PointCloud2
+ *  - tf
  *  - Команды на постановку ног
+ *
+ *  Запрос:
+ *    - Xs, Ys, [Zs] - желаемые координаты шага
+ *
+ *  Ответ:
+ *    - Xs, Ys, Zs   - оптимальные координаты шага
+ *    - CanStep      - можно ли вообще сделать шаг
  */
 
 #include <string>
 
 #include <ros/ros.h>
+#include <geometry_msgs/Point32.h>
 
 //TODO: Это  далеко не лучший способ подключить файл, наверняка Catking_Inlcude_Dirs могут лучше, но не работает
 #include "../../../../devel/include/ar600_vision/StepsController.h"
@@ -29,13 +38,18 @@
 using namespace StepsController;
 
 const char point_cloud_topic[] = "/rtabmap/cloud_map";
+const char request_topic[]     = "steps_controller/step_request";
+const char response_topic[]    = "steps_controller/response_topic";
 
 StepsController::StepsController* steps_controller;
-
+ros::Publisher responsePublisher;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input);                    //Принимает облако точек
+//Обработчики топиков
+void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input);
+void request_callback(const geometry_msgs::Point32);
+
 bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res);
 bool GetParams(ros::NodeHandle & nh, StepsParams & params);
 
@@ -61,13 +75,10 @@ int main(int argc, char** argv)
 
     steps_controller = new StepsController::StepsController(params);
 
-    //Подписываемся на топик с облаком точек
-    ros::Subscriber sub = n.subscribe(point_cloud_topic, 1, pointcloud_callback);
-
-    //Создаем сервис
-    ros::ServiceServer steps_controller_service = n.advertiseService("steps_controller",CanStep);
-
-    //ros::spin ();
+    //Топики
+    ros::Subscriber cloudSubscriber = n.subscribe(point_cloud_topic, 1, pointcloud_callback);
+    ros::Subscriber requestSubscriber = n.subscribe(request_topic, 1, request_callback);
+    responsePublisher = n.advertise<geometry_msgs::Point32>(response_topic, 1, true);
 
     while (!steps_controller->wasStopped ())
     {
@@ -93,24 +104,19 @@ void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input)
     steps_controller->UpdateFrame(boost::make_shared<pcl::PCLPointCloud2>(pointCloud2));
 }
 
-
-/////////////////////////////////////////  РЕАЛИЗАЦИЯ СЕРВСИА //////////////////////////////////////////////////////////
-
-/**
- * Этот сервис принимает запрос на проверку возможности наступить в точку
- * и возвращает, можно ли наступить в точку и какие параметры шага должны быть
- */
-bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res)
+void request_callback(const geometry_msgs::Point32 point)
 {
-    //ROS_INFO("Request: StepX=%f StepY=%f",req.StepX, req.StepY);
+    ROS_INFO("Request: StepX=%f StepY=%f",point.x, point.y);
 
     StepsController::StepControllerRequest request;
-    request.StepX = req.StepX;
-    request.StepY = req.StepY;
+    request.StepX = point.x;
+    request.StepY = point.y;
 
     steps_controller->CalculateStep(request);
-
 }
+
+
+
 
 //Получает параметры из RosParam
 bool GetParams(ros::NodeHandle & nh, StepsParams & params)

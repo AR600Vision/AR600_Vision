@@ -24,7 +24,7 @@ namespace StepsController
         steps_params.ShiftY = 0;
         steps_params.ShiftZ = 1;
         steps_params.RotX = 0;
-        steps_params.RotY = 28;
+        steps_params.RotY = 0;
         //steps_params.NormalSearchRadius = 0.05f;
         //steps_params.FootX = 0.20f;
         //steps_params.FootY = 0.10f;

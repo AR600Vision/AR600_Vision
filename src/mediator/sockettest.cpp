@@ -20,7 +20,7 @@ int main(int argc, char** argv)
     memset((char *) &si_other, 0, sizeof(si_other));
     si_other.sin_family = AF_INET;
     si_other.sin_port = htons(12833);
-    if(inet_aton("127.0.0.1" , &si_other.sin_addr)==-0)
+    if(inet_aton("192.168.1.104" , &si_other.sin_addr)==-0)
     {
         cout<<"inet_aton failed";
         return -1;
