@@ -31,6 +31,8 @@
 #include <steps_controller/Utils/Utils.h>
 #include "StepRequest.h"
 #include "StepsParams.h"
+#include "FootTargetFunctor.h"
+
 
 namespace StepsController
 {
@@ -104,7 +106,7 @@ namespace StepsController
                        const std::string &id="cube");
 
 
-
+        void  FindOptimalPoint(FootTargetFunctor &target_func, float & av_angle, Eigen::Vector3f optimalStepPoint) const;
     };
 
 }

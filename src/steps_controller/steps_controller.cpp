@@ -19,10 +19,10 @@
 #include <string>
 
 #include <ros/ros.h>
-#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/PoseStamped.h>
 
 //TODO: Это  далеко не лучший способ подключить файл, наверняка Catking_Inlcude_Dirs могут лучше, но не работает
-#include "../../../../devel/include/ar600_vision/StepsController.h"
+#include "../../../../devel/include/ar600_vision/StepResponse.h"
 
 // PCL specific includes
 #include <pcl/filters/voxel_grid.h>
@@ -48,9 +48,7 @@ ros::Publisher responsePublisher;
 
 //Обработчики топиков
 void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input);
-void request_callback(const geometry_msgs::Point32);
-
-bool CanStep(ar600_vision::StepsController::Request &req, ar600_vision::StepsController::Response &res);
+void request_callback(const geometry_msgs::PoseStamped);
 bool GetParams(ros::NodeHandle & nh, StepsParams & params);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +76,7 @@ int main(int argc, char** argv)
     //Топики
     ros::Subscriber cloudSubscriber = n.subscribe(point_cloud_topic, 1, pointcloud_callback);
     ros::Subscriber requestSubscriber = n.subscribe(request_topic, 1, request_callback);
-    responsePublisher = n.advertise<geometry_msgs::Point32>(response_topic, 1, true);
+    responsePublisher = n.advertise<ar600_vision::StepResponse>(response_topic, 1, true);
 
     while (!steps_controller->wasStopped ())
     {
@@ -104,15 +102,26 @@ void pointcloud_callback(const sensor_msgs::PointCloud2ConstPtr& input)
     steps_controller->UpdateFrame(boost::make_shared<pcl::PCLPointCloud2>(pointCloud2));
 }
 
-void request_callback(const geometry_msgs::Point32 point)
+void request_callback(const geometry_msgs::PoseStamped point)
 {
-    ROS_INFO("Request: StepX=%f StepY=%f",point.x, point.y);
+    float x = point.pose.position.x;
+    float y = point.pose.position.y;
+
+    ROS_INFO("Request: StepX=%f StepY=%f",x, y);
 
     StepsController::StepControllerRequest request;
-    request.StepX = point.x;
-    request.StepY = point.y;
+    request.StepX = x;
+    request.StepY = y;
 
-    steps_controller->CalculateStep(request);
+    auto result = steps_controller->CalculateStep(request);
+
+    //Публикуем топик
+    ar600_vision::StepResponse response;
+    response.CanStep = result.CanStep;
+    response.Pose.position.x = result.StepX;
+    response.Pose.position.y = result.StepY;
+    response.Pose.position.y = result.StepZ;
+    responsePublisher.publish(response);
 }
 
 

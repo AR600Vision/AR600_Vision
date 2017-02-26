@@ -23,8 +23,23 @@ namespace StepsController
 /**
  * Ответ на запрос
  */
-    struct StepControllerResponse {
+    struct StepControllerResponse
+    {
         bool CanStep;
+        float StepX, StepY, StepZ;
+
+        StepControllerResponse()
+        {
+            CanStep=false;
+        };
+
+        StepControllerResponse(bool canStep, float x, float y, float z)
+        {
+            CanStep = canStep;
+            StepX = x;
+            StepY = y;
+            StepZ = z;
+        }
     };
 }
 
