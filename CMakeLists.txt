@@ -30,6 +30,7 @@ add_definitions(${PCL_DEFINITIONS})
 # Ноды
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/path_controller/CMakeLists.txt)
 
 # Сервисы
 #add_service_files(
