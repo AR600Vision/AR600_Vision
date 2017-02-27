@@ -1,0 +1,25 @@
+<launch>
+    <param name="use_sim_time" type="bool" value="True"/>
+    <include file="$(find rtabmap_ros)/launch/demo/demo_robot_mapping.launch">
+        <arg name="rtabmapviz" value="false"/>
+        <arg name="rviz" value="false"/>
+        <arg name="rtabmap_args" value="--delete_db_on_start"/>
+        <!--fixme unused arguments wtf-->
+        <!--<arg name="latch" value="false"/> -->
+        <!--<arg name="map_cleanup" value="false"/>-->
+    </include>
+
+    <node name="footstep_planner" pkg="footstep_planner" type="footstep_planner_walls" >
+        <rosparam file="$(find ar600_vision)/config/planning_params.yaml" command="load" />
+        <rosparam file="$(find ar600_vision)/config/planning_params_ar600e.yaml" command="load" />
+        <rosparam file="$(find ar600_vision)/config/footsteps_ar600e.yaml" command="load" />
+        <remap from="map_walls" to="map"/>
+    </node>
+
+    <node name="nav_rviz" pkg="rviz" type="rviz"/>
+
+    <!-- or launch it from CLion -->
+    <!--<node name="ar600e_navigation_node" pkg="ar600e_navigation" type="ar600e_navigation_node"/>-->
+    <node pkg="rosbag" type="play" name="player" output="screen" args="--clock -d 5 -l /home/aleksey/Workspace/navigation/demo_mapping.bag"/>
+</launch>
+
