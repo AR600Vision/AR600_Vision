@@ -72,15 +72,15 @@ protected:
      * Обертка над SetData, управляющая
      * синхронизацией и флагами
      */
-    void Done(std::function<void(double*, int & count)> setter);
-
-    double* SendBuffer;            //Буфер для отправки по сети
-    int DataSize;                  //Текущий размер полезных данных в буфере
-    const int BufferMaxSize;       //Максимальный размер буфера
+    void Done(std::function<void(double*, int & count, int maxCount)> setter);
 
 private:
     std::mutex _bufferMutex;        //Мьютекс
     bool _isCalcFinished;
+
+    double* SendBuffer;            //Буфер для отправки по сети
+    int DataSize;                  //Текущий размер полезных данных в буфере
+    const int BufferMaxSize;       //Максимальный размер буфера
 };
 
 

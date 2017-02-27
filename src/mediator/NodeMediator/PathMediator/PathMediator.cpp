@@ -14,27 +14,35 @@ PathMediator::PathMediator(ros::NodeHandle nh, int maxBufferSize)
 //Преобразует массив double в нужные параметры
 void PathMediator::_SendRequest(const double* buffer, int count)
 {
+    if(count<2)
+    {
+        ROS_ERROR("PathMediator: not enough arguments in request");
+        throw std::invalid_argument("not enough arguments in request");
+    }
+
     geometry_msgs::PoseStamped goal;
     goal.pose.position.x = buffer[0];
     goal.pose.position.y = buffer[0];
     // fixme work with orientation. while now it's zero
 
+    ROS_INFO("path planner is callled");
     goal_publisher.publish(goal);
 }
 
 //Расчет тракетории законечен
 void PathMediator::Callback(nav_msgs::Path path)
 {
-    //TODO: по-идее, в С++ 14 можно захватывать переменные класса
-    int bufferMaxSize = BufferMaxSize;
-    Done([&path, bufferMaxSize](double* buffer, int & dataSize)
+    Done([&path](double* buffer, int & dataSize, int maxSize)
     {
         //Преобразует ответ в массив double'во
         int steps_count = path.poses.size();
 
         //Под буфер требуется 2*steps_count+1
-        if(bufferMaxSize < 2 * steps_count + 1)
-            throw std::overflow_error("Inner buffer is too small, to contains all path points");
+        if(maxSize < 2 * steps_count + 1)
+        {
+            ROS_ERROR("PathMediator: Inner buffer is too small to contains all result data");
+            throw std::overflow_error("Inner buffer is too small to contains all result data");
+        }
 
         buffer[0] = steps_count;
         for (int i = 0; i < steps_count; i++)

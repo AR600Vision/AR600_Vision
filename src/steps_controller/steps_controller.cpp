@@ -39,7 +39,7 @@ using namespace StepsController;
 
 const char point_cloud_topic[] = "/rtabmap/cloud_map";
 const char request_topic[]     = "steps_controller/step_request";
-const char response_topic[]    = "steps_controller/response_topic";
+const char response_topic[]    = "steps_controller/step_response";
 
 StepsController::StepsController* steps_controller;
 ros::Publisher responsePublisher;
