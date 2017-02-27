@@ -129,7 +129,7 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
     ROS_INFO("UDP listen thread started...");
 
     //Цикл приема запросов
-    while (true)
+    while (ros::ok())
     {
         //Принимаем данные
         socklen_t slen_req = sizeof(si_frund);

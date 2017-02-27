@@ -9,6 +9,7 @@
 #include <exception>
 #include <cstring>
 #include <functional>
+#include <chrono>
 
 /*!
  * @brief Базовый класс, реализующий взаимодействие с нодой
@@ -77,6 +78,8 @@ protected:
 private:
     std::mutex _bufferMutex;        //Мьютекс
     bool _isCalcFinished;
+    std::chrono::system_clock::time_point calc_start;
+    double response_time_limit;
 
     double* SendBuffer;            //Буфер для отправки по сети
     int DataSize;                  //Текущий размер полезных данных в буфере
