@@ -120,7 +120,7 @@ void request_callback(const geometry_msgs::PoseStamped point)
     response.CanStep = result.CanStep;
     response.Pose.position.x = result.StepX;
     response.Pose.position.y = result.StepY;
-    response.Pose.position.y = result.StepZ;
+    response.Pose.position.z = result.StepZ;
     responsePublisher.publish(response);
 }
 

@@ -16,6 +16,8 @@
 #ifndef AR600_VISION_STEPS_CONTROLLER_H
 #define AR600_VISION_STEPS_CONTROLLER_H
 
+#define POINT_TYPE pcl::PointXYZ
+
 #include <string>
 #include <iomanip>
 
@@ -25,7 +27,6 @@
 #include <pcl/features/integral_image_normal.h>
 
 //Project
-#include "settings.h"
 #include <steps_controller/CloudTransforms/CloudTransforms.h>
 #include <steps_controller/Math/Math.h>
 #include <steps_controller/Utils/Utils.h>
@@ -106,7 +107,7 @@ namespace StepsController
                        const std::string &id="cube");
 
 
-        void  FindOptimalPoint(FootTargetFunctor &target_func, float & av_angle, Eigen::Vector3f optimalStepPoint) const;
+        void  FindOptimalPoint(FootTargetFunctor &target_func, float & av_angle, Eigen::Vector3f & optimalStepPoint) const;
     };
 
 }

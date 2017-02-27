@@ -54,7 +54,7 @@ namespace StepsController
     void StepsController::UpdateFrame(pcl::PCLPointCloud2::Ptr pointCloud2)
     {
         //Уменьшение размера
-        pointCloud2 = cloud_transforms.DownsampleCloud(pointCloud2, steps_params.DownsampleLeafSize);
+        //pointCloud2 = cloud_transforms.DownsampleCloud(pointCloud2, steps_params.DownsampleLeafSize);
 
         //Преобразование в pcl::PointCloud<T>
         pcl::PointCloud<POINT_TYPE>::Ptr cloud(new pcl::PointCloud<POINT_TYPE>);
@@ -111,9 +111,8 @@ namespace StepsController
                                             request.StepX, request.StepY))
         {
             //Облако пустое
-            StepControllerResponse response;
             std::cout<<"Cloud is empty!";
-            return response;
+            return StepControllerResponse();
         }
 
         //Расчет углов нормалей к вертикали
@@ -130,9 +129,9 @@ namespace StepsController
         FindOptimalPoint(target_func, av_angle, localStepPoint);
         globalStepPoint.x() = request.StepX + localStepPoint.x();
         globalStepPoint.y() = request.StepY + localStepPoint.y();
-        globalStepPoint.y() = localStepPoint.z()+0.05;
+        globalStepPoint.z() = localStepPoint.z()+0.05;
 
-        std::cout<<"("<< localStepPoint.x() <<"; "<< localStepPoint.y() <<"); "<<"height: "<<localStepPoint.y()<<"; angle: "<<av_angle<<std::endl;
+        std::cout<<"("<< globalStepPoint.x() <<"; "<< globalStepPoint.y() <<"); "<<"height: "<< globalStepPoint.z() << "; angle: "<<av_angle<<std::endl;
 
         //Убираем NaN, чтобы не глючил визуализатор
         Utils::ReplaceNaNs<pcl::PointXYZRGB>(organized, 0);
@@ -153,16 +152,12 @@ namespace StepsController
 
         draw_cube(globalStepPoint.x(), globalStepPoint.y(), globalStepPoint.z(), steps_params.FootX, steps_params.FootY, 0.1, 0,0,1, foot_cube_name);
 
+        return StepControllerResponse(false, globalStepPoint.x(), globalStepPoint.y(), globalStepPoint.z());
     }
 
-    void  StepsController::FindOptimalPoint(FootTargetFunctor &target_func, float & av_angle, Eigen::Vector3f optimalStepPoint) const
+    void  StepsController::FindOptimalPoint(FootTargetFunctor &target_func, float & av_angle, Eigen::Vector3f & optimalStepPoint) const
     {
         float search_step = 0.01;
-        float av_height;
-
-        optimalStepPoint.x() = 0;
-        optimalStepPoint.y() = 0;
-
 
         //Проходим по всем доступным точкам, вычисляем занчение функции
         //и сохраняем в файл в формате X Y Z. Потом можно открыть при помощи
@@ -179,13 +174,13 @@ namespace StepsController
         float y_max = steps_params.SearchY / 2 - steps_params.FootY / 2;
         float y_min = -y_max;
 
-        float max=target_func(0,0,av_height, av_angle);
+        float max=target_func(0,0, optimalStepPoint.z(), av_angle);
 
         for(float x = x_min; x<=x_max; x+=search_step)
         {
             for(float y = y_min; y<=y_max; y+=search_step)
             {
-                float value = target_func(x,y, av_height, av_angle);
+                float value = target_func(x,y, optimalStepPoint.z(), av_angle);
                 fout << x << " " << y << " " << value << endl;
 
                 if(value>max)
@@ -198,8 +193,7 @@ namespace StepsController
         }
 
         //Расчитываем прааметры в оптимальной точке
-        float funcValue = target_func(optimalStepPoint.x(),optimalStepPoint.y(), av_height, av_angle);
-        optimalStepPoint.z() = av_height;
+        float funcValue = target_func(optimalStepPoint.x(), optimalStepPoint.y(), optimalStepPoint.z(), av_angle);
 
         fout<<std::fflush;
         fout.close();
