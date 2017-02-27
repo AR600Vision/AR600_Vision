@@ -26,16 +26,17 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    double data[]={0, 1, 2, 3, 4, 5};
+    double sendBuffer[]={0, 0, 0, 0, 0, 0, 0, 0, 1, -1};
+    double recvBuffer[1000];
 
     slen=sizeof(si_other);
-    if(sendto(s, data, sizeof(double)*sizeof(data) , 0 , (struct sockaddr *) &si_other, slen)==-1)
+    if(sendto(s, sendBuffer,sizeof(sendBuffer) , 0 , (struct sockaddr *) &si_other, slen)==-1)
     {
         cout<<"Error sending, error code: "<<errno;
         return -1;
     }
 
-    int recvSize = recvfrom(s, data, 1000, 0, (struct sockaddr*)&si_other, (socklen_t*)&slen);
+    int recvSize = recvfrom(s, recvBuffer, 1000, 0, (struct sockaddr*)&si_other, (socklen_t*)&slen);
     if(recvSize==-1)
     {
         cout<<"Error receiving, error code: "<<errno;
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
     int count = recvSize/sizeof(double);
     cout<<"Received: "<<count <<":\n";
     for(int i = 0; i<count; i++)
-        std::cout<<data[i]<<" ";
+        std::cout<<recvBuffer[i]<<" ";
 
     return 0;
 }

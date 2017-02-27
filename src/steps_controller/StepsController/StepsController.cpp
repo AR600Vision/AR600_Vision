@@ -3,9 +3,6 @@
 //
 
 #include "StepsController.h"
-#include "FootTargetFunctor.h"
-
-//using namespace StepsController;
 
 namespace StepsController
 {
@@ -24,7 +21,7 @@ namespace StepsController
         steps_params.ShiftY = 0;
         steps_params.ShiftZ = 1;
         steps_params.RotX = 0;
-        steps_params.RotY = 28;
+        steps_params.RotY = 0;
         //steps_params.NormalSearchRadius = 0.05f;
         //steps_params.FootX = 0.20f;
         //steps_params.FootY = 0.10f;
@@ -57,7 +54,7 @@ namespace StepsController
     void StepsController::UpdateFrame(pcl::PCLPointCloud2::Ptr pointCloud2)
     {
         //Уменьшение размера
-        pointCloud2 = cloud_transforms.DownsampleCloud(pointCloud2, steps_params.DownsampleLeafSize);
+        //pointCloud2 = cloud_transforms.DownsampleCloud(pointCloud2, steps_params.DownsampleLeafSize);
 
         //Преобразование в pcl::PointCloud<T>
         pcl::PointCloud<POINT_TYPE>::Ptr cloud(new pcl::PointCloud<POINT_TYPE>);
@@ -114,71 +111,36 @@ namespace StepsController
                                             request.StepX, request.StepY))
         {
             //Облако пустое
-            StepControllerResponse response;
             std::cout<<"Cloud is empty!";
-            return response;
+            return StepControllerResponse();
         }
 
         //Расчет углов нормалей к вертикали
         boost::shared_ptr<float[]> normal_angles;
         calculate_noraml_angls(organized_normals, normal_angles);
 
-        //Раскрашиваем точки по углу нормале
-        color_cloud_normals(organized, normal_angles);
-
         //Находим оптимальную точку наступания
         FootTargetFunctor target_func(normal_angles, organized, steps_params, step);
-        //target_func(-0.15,0);
 
+        float av_angle;
+        Eigen::Vector3f localStepPoint;
+        Eigen::Vector3f globalStepPoint;
 
-        //Пределы поиска (ступня не должна выходить за область поиска)
-        float x_max = steps_params.SearchX/2 - steps_params.FootX/2;
-        float x_min = -x_max;
-        float y_max = steps_params.SearchY/2 - steps_params.FootY/2;
-        float y_min = -y_max;
+        FindOptimalPoint(target_func, av_angle, localStepPoint);
+        globalStepPoint.x() = request.StepX + localStepPoint.x();
+        globalStepPoint.y() = request.StepY + localStepPoint.y();
+        globalStepPoint.z() = localStepPoint.z()+0.05;
 
-        float av_height, av_angle, height_deviation, angle_deviation;
-
-        //Проходим по всем доступным точкам, вычисляем занчение функции
-        //и сохраняем в файл в формате X Y Z. Потом можно открыть при помощи
-        // GNUPLOT.
-        // Заодно и максимум найдем
-        float search_step = 0.01;
-        std::ofstream fout;
-        fout.open("/home/garrus/plots/plot.txt", fstream::out);
-
-
-        float max=target_func(0,0,av_height, av_angle, height_deviation, angle_deviation), _x_max=0, _y_max=0;
-
-        for(float x = x_min; x<=x_max; x+=search_step)
-        {
-            for(float y = y_min; y<=y_max; y+=search_step)
-            {
-                float value = target_func(x,y, av_height, av_angle, height_deviation, angle_deviation);
-                fout<<x<<" "<<y<<" "<<value<<std::endl;
-
-                if(value>max)
-                {
-                    max=value;
-                    _x_max=x;
-                    _y_max=y;
-                }
-            }
-        }
-
-        target_func(_x_max,_y_max,av_height, av_angle, height_deviation, angle_deviation);
-
-        std::cout<<"("<<_x_max<<"; "<<_y_max<<"); "<<"height: "<<av_height<<"; angle: "<<av_angle<<std::endl;
-        draw_cube(request.StepX+_x_max, request.StepY-_y_max, av_height+0.05, steps_params.FootX, steps_params.FootY, 0.1, 0,0,1, foot_cube_name);
-
-
-        fout<<std::fflush;
-        fout.close();
+        std::cout<<"("<< globalStepPoint.x() <<"; "<< globalStepPoint.y() <<"); "<<"height: "<< globalStepPoint.z() << "; angle: "<<av_angle<<std::endl;
 
         //Убираем NaN, чтобы не глючил визуализатор
         Utils::ReplaceNaNs<pcl::PointXYZRGB>(organized, 0);
 
         //Визуализация
+
+        //Раскрашиваем точки по углу нормале
+        color_cloud_normals(organized, normal_angles);
+
         viewer->removePointCloud("normals");
         viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal>(organized, organized_normals, 1, 0.015, "normals", 0);
         viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR,1,1,0, "normals");
@@ -188,12 +150,54 @@ namespace StepsController
         viewer->addPointCloud(organized, "organized");
         viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 6, "organized");
 
-        //Рисуем уровень среднего
-        //draw_cube(request.StepX, request.StepY, av_height, steps_params.SearchX, steps_params.SearchY, height_deviation,0,0,1, "average_plane");
+        draw_cube(globalStepPoint.x(), globalStepPoint.y(), globalStepPoint.z(), steps_params.FootX, steps_params.FootY, 0.1, 0,0,1, foot_cube_name);
+
+        return StepControllerResponse(false, globalStepPoint.x(), globalStepPoint.y(), globalStepPoint.z());
+    }
+
+    void  StepsController::FindOptimalPoint(FootTargetFunctor &target_func, float & av_angle, Eigen::Vector3f & optimalStepPoint) const
+    {
+        float search_step = 0.01;
+
+        //Проходим по всем доступным точкам, вычисляем занчение функции
+        //и сохраняем в файл в формате X Y Z. Потом можно открыть при помощи
+        // GNUPLOT.
+        // Заодно и максимум найдем
 
 
-        StepControllerResponse response;
-        return response;
+        ofstream fout;
+        fout.open("/home/garrus/plots/plot.txt", std::ios_base::out);
+
+        //Пределы поиска (ступня не должна выходить за область поиска)
+        float x_max = steps_params.SearchX / 2 - steps_params.FootX / 2;
+        float x_min = -x_max;
+        float y_max = steps_params.SearchY / 2 - steps_params.FootY / 2;
+        float y_min = -y_max;
+
+        float max=target_func(0,0, optimalStepPoint.z(), av_angle);
+
+        for(float x = x_min; x<=x_max; x+=search_step)
+        {
+            for(float y = y_min; y<=y_max; y+=search_step)
+            {
+                float value = target_func(x,y, optimalStepPoint.z(), av_angle);
+                fout << x << " " << y << " " << value << endl;
+
+                if(value>max)
+                {
+                    max=value;
+                    optimalStepPoint.x() = x;
+                    optimalStepPoint.y() = y;
+                }
+            }
+        }
+
+        //Расчитываем прааметры в оптимальной точке
+        float funcValue = target_func(optimalStepPoint.x(), optimalStepPoint.y(), optimalStepPoint.z(), av_angle);
+
+        fout<<std::fflush;
+        fout.close();
+
     }
 
     //Расчитывает углы между нормалями и вертикалью

@@ -17,10 +17,10 @@ FootTargetFunctor::FootTargetFunctor(boost::shared_ptr<float[]> normal_angles, p
 }
 
 float FootTargetFunctor::operator()(float x, float y,
-                                    float & av_height, float & av_angle,
-                                    float & height_deviation, float & angle_deviation) const
+                                    float & av_height, float & av_angle) const
 {
     int start_x, end_x, start_y, end_y;
+    float height_deviation, angle_deviation;
 
     /* Вычисление граничных индексов
      *
@@ -61,15 +61,6 @@ float FootTargetFunctor::operator()(float x, float y,
     overflow_check(start_y, 0, height, "start_y");
     overflow_check(end_y,   0, height, "end_y");
 
-
-    //Дебажная раскраска - выделяем прямоугольник
-    /*for(int column = start_x; column<end_x; column++)
-    {
-        for(int row = start_y; row<end_y; row++)
-        {
-            cloud->at(column, row).r=255;
-        }
-    }*/
 
     //Расчет параметров
     //TODO: если плоскость под углом ско высот будет большое, но это все равно плоскость!

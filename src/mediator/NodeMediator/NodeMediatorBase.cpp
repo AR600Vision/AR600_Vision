@@ -4,6 +4,7 @@
 
 
 #include "NodeMediatorBase.h"
+#include <iostream>
 
 NodeMediatorBase::NodeMediatorBase(int maxBufferSize):
         _bufferMutex(),
@@ -28,10 +29,10 @@ void NodeMediatorBase::SendRequest(const double* buffer, int count)
     std::lock_guard<std::mutex> l(_bufferMutex);
     bool isRviz = buffer[0]==1;
 
-    if(_isCalcFinished && isRviz)
+    if(_isCalcFinished && !isRviz)
     {
         //Отрезаем rviz
-        _SendRequest(buffer+1, count);
+        _SendRequest(buffer+1, count-1);
         _isCalcFinished = false;
     }
 }
@@ -44,15 +45,18 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
     if(DataSize>maxCount)
         throw std::overflow_error("Output buffer is smaller then data size");
 
-    memcpy(buffer, SendBuffer, DataSize);
+    memcpy(buffer, SendBuffer, sizeof(double)*DataSize);
+    std::cout<<"\n";
+
+
     return DataSize;
 }
 
 //Данные от ноды получены
-void NodeMediatorBase::Done(std::function<void(double*, int & count)> setter)
+void NodeMediatorBase::Done(std::function<void(double*, int & count, int maxCount)> setter)
 {
     std::lock_guard<std::mutex> l(_bufferMutex);
-    setter(SendBuffer, DataSize);
+    setter(SendBuffer, DataSize, BufferMaxSize);
     _isCalcFinished = true;
 
 }

@@ -1,6 +1,6 @@
 /*!
  *  \brief     Mediator node for AR600 CV project
- *  \author    Titov Alex, Markov Alex
+ *  \authors    Titov Alex, Markov Alex
  *  \date      2017
  *  \warning   Improper use can crash your application
  *  \copyright GNU Public License.
@@ -24,7 +24,7 @@
  *  | node id | status | actual | elapsed time | data         |
  *  |---------|--------|--------|--------------|------ ... ---|
  *
- *  node id       Номер ноды, которая отвечает (такой же, как в запросе
+ *  node id       Номер ноды, которая отвечает (такой же, как в запросе)
  *  status        Код ошибки
  *  actual        Является ли эти данные ответом на текущий (1) или один из предыдущих (0)
  *                запросов. В этой версии ответ в пределах одного запроса невозможен, всегда 0
@@ -135,8 +135,6 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
         socklen_t slen_req = sizeof(si_frund);
         ssize_t recvSize = recvfrom(sock_desc, buffer, maxBufferSize * sizeof(double), 0, (sockaddr *)&si_frund, &slen_req);
 
-        ROS_INFO("Received data");
-
         //Проверка корректности данных
         if(recvSize == -1)
         {
@@ -144,7 +142,17 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
             continue;
         }
 
-        if(recvSize <=3)
+        if(recvSize % sizeof(double) != 0)
+        {
+            ROS_ERROR("Received data isn't array of doubles");
+            continue;
+        }
+
+        recvSize /= sizeof(double);
+
+        ROS_INFO("Received data");
+
+        if(recvSize <3)
         {
             ROS_ERROR("Input request has invalid package format");
             sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
@@ -165,16 +173,17 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
         try
         {
             //+1 - отрезаем nodeId
-            mediators[commandId]->SendRequest(buffer+1, recvSize);
+            mediators[commandId]->SendRequest(buffer+1, recvSize-1);
 
             //TODO: таймоут
 
             //+4 потому что отрезаем nodeId, status, is actual, elapsed time
             sendCount = mediators[commandId]->ReadResponse(buffer + 4, maxBufferSize);
+
         }
         catch(std::exception ex)
         {
-            ROS_ERROR("Node internal error in node: %s",ex.what());
+            ROS_ERROR("Internal error in node: %s",ex.what());
             sendError(sock_desc, si_frund, NODE_INTERNAL_ERROR);
         }
 
