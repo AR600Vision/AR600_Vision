@@ -26,7 +26,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    double sendBuffer[]={0, 0, 0, 0, 0, 0, 0, 0, 1, -1};
+    double sendBuffer[]={0, 0, 0, 0, 0, 0};
     double recvBuffer[1000];
 
     slen=sizeof(si_other);

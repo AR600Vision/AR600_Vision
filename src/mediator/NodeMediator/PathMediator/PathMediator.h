@@ -23,6 +23,8 @@ public:
     //Расчет тракетории законечен
     void Callback(nav_msgs::Path path);
 
+    virtual uint8_t RequestLength() override ;
+
 protected:
 
     /*!
@@ -31,7 +33,7 @@ protected:
      * @param buffer
      * @param count
      */
-    virtual void _SendRequest(const double* buffer, int count) override;
+    virtual bool _SendRequest(const double* buffer, int count) override;
 
 private:
     ros::Subscriber path_subscriber;

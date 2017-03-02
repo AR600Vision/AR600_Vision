@@ -12,23 +12,20 @@
  *  данные пеередаются в виде массива double
  *
  *  Запрос:
- *  |---------|------|------ ... ---|
- *  | node id | rviz | data         |
- *  |---------|------|------ ... ---|
+ *  |------ ... ---|------ ... ---|--- ... ---|------ ... ---|
+ *  | data 1       | data 2       |           | data n       |
+ *  |------ ... ---|------ ... ---|--- ... ---|------ ... ---|
  *
- *  node id      номер вызываемой ноды
- *  rviz         входные данные беруться из запроса (0) или из RVIZ (1) (или еще откуда-нибудь)
+ *  data1..n   Данные запроса к i-й ноде
  *
  *  Ответ:
- *  |---------|--------|--------|--------------|------ ... ---|
- *  | node id | status | actual | elapsed time | data         |
- *  |---------|--------|--------|--------------|------ ... ---|
+ *  |--------|--------|------ ... ---|--------|------ ... ---|------|--- ... ---|--------|------ ... ---|
+ *  | status | done 1 | data 1       | done m | data 2       | done |           | done m | data m       |
+ *  |--------|--------|------ ... ---|--------|------ ... ---|------|--- ... ---|--------|------ ... ---|
  *
- *  node id       Номер ноды, которая отвечает (такой же, как в запросе)
  *  status        Код ошибки
- *  actual        Является ли эти данные ответом на текущий (1) или один из предыдущих (0)
- *                запросов. В этой версии ответ в пределах одного запроса невозможен, всегда 0
- *  elapsed time  Время, прошедшее с момента запроса. В этой версии всегда 0.
+ *  done1..m      Расчет завершен (0/1)
+ *  data1..m      Результат расчета i-й нодой
  *
  *  КОДЫ ОШИБОК:
  *   0     Без ошибок
@@ -56,9 +53,11 @@ enum ERRORS
 {
     NO_ERROR,
     INVALID_PACKAGE_FORMAT,
-    NODE_NOT_FOUND,
+    MEDIATOR_ERROR,
     NODE_INTERNAL_ERROR
 };
+
+bool isReceive;
 
 /*!
  * Функция слушания
@@ -75,6 +74,9 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
  */
 void sendError(int sock_desc, sockaddr_in si_frund, ERRORS error);
 
+bool SendRequests(const std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, const double *buffer, ssize_t recvSize);
+int ReadResponse(std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, double *buffer, int maxBufferSize);
+
 int main(int argc, char ** argv)
 {
 
@@ -86,11 +88,11 @@ int main(int argc, char ** argv)
     //Заполняем список медиаторов
     std::vector<NodeMediatorBase*> mediators =
     {
-        new StepsMediator(nh, 1000),
-        new PathMediator(nh, 1000)
+        new StepsMediator(nh, 1000)
     };
 
 
+    isReceive = true;
     std::thread listenThread(receiveFunc, 12833, 1000, std::ref(mediators));
     listenThread.detach();
 
@@ -103,6 +105,7 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 {
     sockaddr_in si_frund;
     sockaddr_in si_me;
+    int elementsWrited;
 
     /// Create socket
     int sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -124,26 +127,24 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
     //Буфер для данных
     //Пока я использую один буфер, но можно и два
     double* buffer = new double[maxBufferSize];
-    int sendCount;
 
     ROS_INFO("UDP listen thread started...");
 
     //Цикл приема запросов
-    while (true)
+    while (isReceive)
     {
         //Принимаем данные
         socklen_t slen_req = sizeof(si_frund);
-        ssize_t recvSize = recvfrom(sock_desc, buffer, maxBufferSize * sizeof(double), 0, (sockaddr *)&si_frund, &slen_req);
+        ssize_t recvSize = recvfrom(sock_desc, buffer, maxBufferSize * sizeof(double), 0, (sockaddr *) &si_frund,
+                                    &slen_req);
 
         //Проверка корректности данных
-        if(recvSize == -1)
-        {
-            ROS_ERROR("Error receiving data.Error code: %d",errno);
+        if (recvSize == -1) {
+            ROS_ERROR("Error receiving data.Error code: %d", errno);
             continue;
         }
 
-        if(recvSize % sizeof(double) != 0)
-        {
+        if (recvSize % sizeof(double) != 0) {
             ROS_ERROR("Received data isn't array of doubles");
             continue;
         }
@@ -152,54 +153,87 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
         ROS_INFO("Received data");
 
-        if(recvSize <3)
-        {
-            ROS_ERROR("Input request has invalid package format");
-            sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
-            continue;
-        }
+        //Разделяем запрос на части, распределяем между медиаторами,
+        //вызываем, собираем результат обратно в массив
+        //если в какой-то ноде на чтении или записи что-то кинект
+        //исключение, то весь цикл вызова-сбора прервется
 
-        int commandId = buffer[0];
-        if(commandId <0 || commandId >= mediators.size())
-        {
-            ROS_ERROR("Command id %d is out of range", commandId);
-            sendError(sock_desc, si_frund, NODE_NOT_FOUND);
-            continue;
-        }
-
-        ROS_INFO("Starting NodeMediator #%d",commandId);
-
-        //Обработка
         try
         {
-            //+1 - отрезаем nodeId
-            mediators[commandId]->SendRequest(buffer+1, recvSize-1);
+            //Разделяем запрос между медиаторами
+            if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
+                continue;
 
-            //TODO: таймоут
+            //TODO: Timeout
 
-            //+4 потому что отрезаем nodeId, status, is actual, elapsed time
-            sendCount = mediators[commandId]->ReadResponse(buffer + 4, maxBufferSize);
+            elementsWrited  = ReadResponse(mediators,  si_frund, sock_desc, buffer, maxBufferSize);
+            if(elementsWrited==-1)
+                continue;
 
         }
         catch(std::exception ex)
         {
             ROS_ERROR("Internal error in node: %s",ex.what());
             sendError(sock_desc, si_frund, NODE_INTERNAL_ERROR);
+            continue;
         }
 
-        //Заполняем служебную информацию
-        buffer[0] = commandId;
         buffer[1] = (double)NO_ERROR;
-        buffer[2] = 0; //Не 0 только при реализации таймоута
-        buffer[3] = 0; //Не поддерживается
-
         socklen_t slen_res = sizeof(si_frund);
-        if(sendto(sock_desc, buffer, (sendCount + 4) * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
+        if(sendto(sock_desc, buffer, elementsWrited * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
             ROS_INFO("Sent response");
         else
             ROS_ERROR("Error sending response. Error code: %d", errno);
 
     }
+}
+
+
+
+//Раздаеляет запрос на запросы к отдельным медиаторам
+bool SendRequests(const std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, const double *buffer, ssize_t recvSize)
+{
+    int elementsRead = 0;
+    for (int i = 0; i < mediators.size(); i++)
+    {
+        int requiredRequestLength = mediators[i]->RequestLength();
+        if(recvSize - elementsRead < requiredRequestLength)
+        {
+            ROS_ERROR("Not enough paramters");
+            sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
+            return false;
+        }
+
+        if(!mediators[i]->SendRequest(buffer+elementsRead, requiredRequestLength))
+        {
+            ROS_ERROR("Not enough paramters");
+            sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
+            return false;
+        }
+
+        elementsRead+=requiredRequestLength;
+    }
+
+    return true;
+}
+
+//Собираем результаты
+int ReadResponse(std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, double *buffer, int maxBufferSize)
+{
+    int elementsWrited = 1;       //Начинаем с 1, потому что там статус
+    for(int i = 0; i<mediators.size(); i++)
+    {
+        int size = mediators[i]->ReadResponse(buffer + elementsWrited, maxBufferSize - elementsWrited);
+        if (size == -1) {
+            ROS_ERROR("Buffer is too small to contains all response data");
+            sendError(sock_desc, si_frund, MEDIATOR_ERROR);
+            return -1;
+        }
+
+        elementsWrited += size;
+    }
+
+    return elementsWrited;
 }
 
 //Отправляет код ошибки

@@ -24,17 +24,21 @@ NodeMediatorBase::~NodeMediatorBase()
 }
 
 //Отправка запроса ноде
-void NodeMediatorBase::SendRequest(const double* buffer, int count)
+bool NodeMediatorBase::SendRequest(const double* buffer, int count)
 {
     std::lock_guard<std::mutex> l(_bufferMutex);
-    bool isRviz = buffer[0]==1;
 
-    if(_isCalcFinished && !isRviz)
+    if(_isCalcFinished)
     {
-        //Отрезаем rviz
-        _SendRequest(buffer+1, count-1);
-        _isCalcFinished = false;
+        bool isOk = _SendRequest(buffer, count);
+
+        if(isOk)
+            _isCalcFinished = false;
+
+        return isOk;
     }
+    else
+        return true;
 }
 
 //Чтение результата
@@ -42,14 +46,17 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
 {
     std::lock_guard<std::mutex> l(_bufferMutex);
 
-    if(DataSize>maxCount)
-        throw std::overflow_error("Output buffer is smaller then data size");
+    if(DataSize + 1 > maxCount)
+        return -1;
 
-    memcpy(buffer, SendBuffer, sizeof(double)*DataSize);
-    std::cout<<"\n";
+    //Устанавливаем флаг завершенности расчета
+    buffer[0] = _isCalcFinished;
 
+    //Копируем данные
+    if(buffer!=nullptr)
+        memcpy(buffer+1, SendBuffer, sizeof(double)*DataSize);
 
-    return DataSize;
+    return DataSize + 1;
 }
 
 //Данные от ноды получены

@@ -13,28 +13,35 @@ StepsMediator::StepsMediator(ros::NodeHandle & nh, int maxBufferSize) :
 {
     step_publisher = nh.advertise<geometry_msgs::PoseStamped>(request_topic, 100);
     step_subscriber = nh.subscribe(response_topic, 1, &StepsMediator::ResultCallback, this);
+
+    //TODO: Временное решение
+    DataSize = 7;
 }
 
-void StepsMediator::_SendRequest(const double* buffer, int count)
+uint8_t StepsMediator::RequestLength()
 {
-    if(count<8)
-    {
-        ROS_ERROR("StepsMediator: not enough arguments in request");
-        throw std::invalid_argument("Not enough arguments in request");
-    }
+    return 6;
+}
 
-    float dX  = buffer[0], dY  = buffer[1],  dZ  = buffer[2];
-    float dfX = buffer[3], dfY = buffer[4], dfZ = buffer[5];
-    float xS  = buffer[6], yS  = buffer[7];
+bool StepsMediator::_SendRequest(const double* buffer, int count)
+{
+    if(count<RequestLength())
+        return false;
 
-    //TODO: Опубилвковать смещения и повороты в TF
+    float xSl  = buffer[0], ySl  = buffer[1], zSl = buffer[2];
+    float xSr  = buffer[3], ySr  = buffer[4], zSr = buffer[5];
 
     geometry_msgs::PoseStamped pose;
-    pose.pose.position.x = xS;
-    pose.pose.position.y = yS;
+    pose.pose.position.x = xSl;
+    pose.pose.position.y = ySl;
+    pose.pose.position.y = zSl;
+
+    //TODO: А вторая нога?
 
     ROS_INFO("steps_controller is called");
     step_publisher.publish(pose);
+
+    return true;
 }
 
 //расчет шага закончен
@@ -51,22 +58,21 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
 
     Done([&step](double* buffer, int & count, int maxCount)
     {
-        if(maxCount<10)
+        if(maxCount<7)
         {
             ROS_ERROR("StepsMediator: Inner buffer is too small to contains all result data");
             throw std::overflow_error("Inner buffer is too small to contains all result data");
         }
 
-        //TODO: Запросить трансформацию и передать
-        buffer[0]=0; buffer[1]=0; buffer[2]=0;
-        buffer[3]=0; buffer[4]=0; buffer[5]=0;
 
-        buffer[6]=step.CanStep;
-        buffer[7]=step.Pose.position.x;
-        buffer[8]=step.Pose.position.y;
-        buffer[9]=step.Pose.position.z;
+        buffer[0]=step.CanStep;
+        buffer[1]=step.Pose.position.x;
+        buffer[2]=step.Pose.position.y;
+        buffer[3]=step.Pose.position.z;
 
-        count = 10;
+        //TODO: А вторая нога?
+
+        //count = 7;
     });
 }
 

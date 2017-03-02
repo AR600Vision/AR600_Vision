@@ -38,21 +38,29 @@ public:
      * @brief Отправляет запрос ноде
      * @param buffer буфер с данными
      * @param count размер входящего массива с параметрами
+     * @return успешность вызова, false - количество параметров недосточно
      */
-    void SendRequest(const double* buffer, int count);
+    bool SendRequest(const double* buffer, int count);
 
     /*!
      * @brief Копирует результат в буфер
-     * @param buffer буфер для результата
+     * @param buffer буфер для результата. Если параметр NULL, то
+     *        будет возвращен требуемый размер памяти (в double), без
+     *        самого копирования
      * @param maxCount максимальный размер, который можно поместить
-     *                 в буфер
-     * @return размер данных, скопированных в буфер
+     *        в буфер
+     * @return размер данных (в double), скопированных в буфер
      *
      * Если объем копируемых данных больше, чем максимальный
-     * размер буфера, будет выброшено исключение std::overflow_error
+     * размер буфера, будет возвращено -1
      */
     int ReadResponse(double* buffer,  int maxCount);
 
+    /*!
+     * Количество требуемых параметров
+     * @return
+     */
+    virtual uint8_t RequestLength()=0;
 
 protected:
 
@@ -62,7 +70,7 @@ protected:
      * @param buffer
      * @param count
      */
-    virtual void _SendRequest(const double* buffer, int count) = 0;
+    virtual bool _SendRequest(const double* buffer, int count) = 0;
 
     /*!
      * @brief Сигнализирует о том, что результат получен
@@ -74,12 +82,16 @@ protected:
      */
     void Done(std::function<void(double*, int & count, int maxCount)> setter);
 
+    //TODO: временное решение
+    //В новом варианте с одним вызовом, размер возвращаемых нодой
+    //данных должен быть всегда одинаков
+    int DataSize;                  //Текущий размер полезных данных в буфере
+
 private:
     std::mutex _bufferMutex;        //Мьютекс
     bool _isCalcFinished;
 
     double* SendBuffer;            //Буфер для отправки по сети
-    int DataSize;                  //Текущий размер полезных данных в буфере
     const int BufferMaxSize;       //Максимальный размер буфера
 };
 

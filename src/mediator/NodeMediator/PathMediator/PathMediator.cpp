@@ -11,14 +11,18 @@ PathMediator::PathMediator(ros::NodeHandle nh, int maxBufferSize)
     ros::Publisher goal_publisher = nh.advertise<geometry_msgs::PoseStamped>("goal", 1, true);
 }
 
-//Преобразует массив double в нужные параметры
-void PathMediator::_SendRequest(const double* buffer, int count)
+uint8_t PathMediator::RequestLength()
 {
+    return 2;
+}
+
+//Преобразует массив double в нужные параметры
+bool PathMediator::_SendRequest(const double* buffer, int count)
+{
+    throw std::logic_error("PathMediator is not updated for new mediator system");
+
     if(count<2)
-    {
-        ROS_ERROR("PathMediator: not enough arguments in request");
-        throw std::invalid_argument("not enough arguments in request");
-    }
+        return false;
 
     geometry_msgs::PoseStamped goal;
     goal.pose.position.x = buffer[0];
@@ -27,6 +31,8 @@ void PathMediator::_SendRequest(const double* buffer, int count)
 
     ROS_INFO("path planner is callled");
     goal_publisher.publish(goal);
+
+    return true;
 }
 
 //Расчет тракетории законечен
