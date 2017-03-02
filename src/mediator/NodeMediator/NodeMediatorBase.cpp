@@ -12,7 +12,8 @@ NodeMediatorBase::NodeMediatorBase(int maxBufferSize):
 {
     //Инициализация буфферов и прочего
     SendBuffer = new double[BufferMaxSize];
-    _isCalcFinished = true;
+    _isCalcFinished = false;
+    _firstCall = true;
     DataSize = 0;
     memset(SendBuffer,  0, sizeof(double)*BufferMaxSize);
 }
@@ -26,11 +27,12 @@ NodeMediatorBase::~NodeMediatorBase()
 //Отправка запроса ноде
 bool NodeMediatorBase::SendRequest(const double* buffer, int count)
 {
-    //std::lock_guard<std::mutex> l(_bufferMutex);
+    std::lock_guard<std::mutex> l(_bufferMutex);
 
-    if(_isCalcFinished)
+    if(_isCalcFinished || _firstCall)
     {
         bool isOk = _SendRequest(buffer, count);
+        _firstCall = false;
 
         if(isOk)
             _isCalcFinished = false;
@@ -50,7 +52,7 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
         return -1;
 
     //Устанавливаем флаг завершенности расчета
-    buffer[0] = _isCalcFinished;
+    buffer[0] = (double)_isCalcFinished;
 
     //Копируем данные
     if(buffer!=nullptr)
@@ -62,7 +64,7 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
 //Данные от ноды получены
 void NodeMediatorBase::Done(std::function<void(double*, int & count, int maxCount)> setter)
 {
-    //std::lock_guard<std::mutex> l(_bufferMutex);
+    std::lock_guard<std::mutex> l(_bufferMutex);
     setter(SendBuffer, DataSize, BufferMaxSize);
     _isCalcFinished = true;
 

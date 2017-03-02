@@ -24,34 +24,18 @@ uint8_t StepsMediator::RequestLength()
 
 bool StepsMediator::_SendRequest(const double* buffer, int count)
 {
-    ROS_INFO("SendRequest. Count: %d", count);
+    ROS_INFO("SendRequest");
 
     if(count<RequestLength())
+    {
+        ROS_ERROR("StepsMediator: Not enough parameters");
         return false;
+    }
 
-    //publish(buffer[0], buffer[1], buffer[2]);
-    //_xs = buffer[3]; _ys=buffer[4]; _zs=buffer[5];
+    publish(buffer[0], buffer[1], buffer[2]);
+    _xs = buffer[3]; _ys=buffer[4]; _zs=buffer[5];
 
-    //stepCnt++;
-
-    Done([this, buffer](double* buffer1, int & count, int maxCount)
-         {
-             ROS_INFO("Done");
-
-             if(maxCount<7)
-             {
-                 ROS_ERROR("StepsMediator: Inner buffer is too small to contains all result data");
-                 throw std::overflow_error("Inner buffer is too small to contains all result data");
-             }
-
-             //Первая нога
-             for(int i=0; i<6; i++)
-                 buffer1[i]=buffer[i]+1;
-
-             buffer1[6] = 1;
-
-             count = 7;
-         });
+    stepCnt++;
 
     return true;
 }
@@ -94,15 +78,16 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
             throw std::overflow_error("Inner buffer is too small to contains all result data");
         }
 
-        //Первая нога
-        buffer[0]=step.Pose.position.x;
-        buffer[1]=step.Pose.position.y;
-        buffer[2]=step.Pose.position.z;
+        //Левая нога
+        buffer[0]=_xs;
+        buffer[1]=_ys;
+        buffer[2]=_zs;
 
-        //Вторая нога
-        buffer[3]=_xs;
-        buffer[4]=_ys;
-        buffer[5]=_zs;
+        //Правая нога
+        buffer[3]=step.Pose.position.x;
+        buffer[4]=step.Pose.position.y;
+        buffer[5]=step.Pose.position.z;
+
         buffer[6]=step.CanStep & canStep;
 
         count = 7;

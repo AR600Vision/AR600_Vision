@@ -1,14 +1,17 @@
 #include <iostream>
+#include <iomanip>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <cstring>
 
 using namespace std;
 
+void test(sockaddr_in & si_other, int s);
+
+
 int main(int argc, char** argv)
 {
     struct sockaddr_in  si_other;
-    int slen;
     int s;
 
     if((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
@@ -26,6 +29,14 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    test(si_other, s);
+
+    return 0;
+}
+
+void test(sockaddr_in & si_other, int s)
+{
+    int slen;
     double sendBuffer[]={0, 0, 0, 0, 0, 0};
     double recvBuffer[1000];
 
@@ -33,20 +44,23 @@ int main(int argc, char** argv)
     if(sendto(s, sendBuffer,sizeof(sendBuffer) , 0 , (struct sockaddr *) &si_other, slen)==-1)
     {
         cout<<"Error sending, error code: "<<errno;
-        return -1;
+        return;
     }
 
     int recvSize = recvfrom(s, recvBuffer, 1000, 0, (struct sockaddr*)&si_other, (socklen_t*)&slen);
     if(recvSize==-1)
     {
         cout<<"Error receiving, error code: "<<errno;
-        return -1;
+        return;
     }
 
-    int count = recvSize/sizeof(double);
-    cout<<"Received: "<<count <<":\n";
-    for(int i = 0; i<count; i++)
-        std::cout<<recvBuffer[i]<<" ";
+    recvSize/=sizeof(double);
 
-    return 0;
+    cout<<"Received: "<<recvSize <<":\n";
+
+    cout << setw(5) << setprecision(2) << recvBuffer[0] << " | "<<setw(5)<<setprecision(2)<<recvBuffer[1]<<" | ";
+    for(int i = 2; i<recvSize; i++)
+        cout<<setw(5)<<setprecision(2)<<recvBuffer[i]<<" ";
+
+    std::cout<<"\n";
 }

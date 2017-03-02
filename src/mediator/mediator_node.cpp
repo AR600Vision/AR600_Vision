@@ -160,14 +160,13 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
         try
         {
-            //Разделяем запрос между медиаторами
-            if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
-                continue;
-
-            //TODO: Timeout
-
+            //Результаты предыдущего вызова
             elementsWrited  = ReadResponse(mediators,  si_frund, sock_desc, buffer, maxBufferSize);
             if(elementsWrited==-1)
+                continue;
+
+            //Разделяем запрос между медиаторами
+            if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
                 continue;
 
             ROS_INFO("Response readed");
@@ -180,7 +179,7 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
             continue;
         }
 
-        buffer[1] = (double)NO_ERROR;
+        buffer[0] = (double)NO_ERROR;
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, elementsWrited * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
             ROS_INFO("Sent response");

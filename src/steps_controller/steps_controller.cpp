@@ -45,6 +45,9 @@ const char response_topic[]    = "steps_controller/step_response";
 StepsController::StepsController* steps_controller;
 ros::Publisher responsePublisher;
 
+//TODO: для отладки связи с фрундом, удалить
+int requestCnt;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Обработчики топиков
@@ -56,8 +59,6 @@ bool GetParams(ros::NodeHandle & nh, StepsParams & params);
 
 int main(int argc, char** argv)
 {
-    std::cout<<"wtf\n";
-
     //Инициализация ноды ROS
     ros::init(argc, argv, "StepsController");
 
@@ -75,6 +76,8 @@ int main(int argc, char** argv)
     }
 
     steps_controller = new StepsController::StepsController(params);
+
+    requestCnt = 0;
 
     //Топики
     ros::Subscriber cloudSubscriber = n.subscribe(point_cloud_topic, 1, pointcloud_callback);
@@ -109,22 +112,33 @@ void request_callback(const geometry_msgs::PoseStamped point)
 {
     float x = point.pose.position.x;
     float y = point.pose.position.y;
+    float z = point.pose.position.z;
 
-    ROS_INFO("Request: StepX=%f StepY=%f",x, y);
+    ROS_INFO("Request: (%f %f %f)",x, y, z);
 
     StepsController::StepControllerRequest request;
     request.StepX = x;
     request.StepY = y;
 
-    auto result = steps_controller->CalculateStep(request);
+    /*auto result = steps_controller->CalculateStep(request);
 
     //Публикуем топик
     ar600_vision::StepResponse response;
     response.CanStep = result.CanStep;
     response.Pose.position.x = result.StepX;
     response.Pose.position.y = result.StepY;
-    response.Pose.position.z = result.StepZ;
+    reponse.Pose.position.z = result.StepZ;
+    responsePublisher.publish(response);*/
+
+    //Тестирование фрунда
+    ar600_vision::StepResponse response;
+    response.CanStep = 1;
+    response.Pose.position.x = requestCnt;
+    response.Pose.position.y = requestCnt;
+    response.Pose.position.z =  requestCnt;
     responsePublisher.publish(response);
+
+    requestCnt++;
 }
 
 

@@ -86,6 +86,7 @@ protected:
 private:
     std::mutex _bufferMutex;        //Мьютекс
     bool _isCalcFinished;
+    bool _firstCall;
 
     double* SendBuffer;            //Буфер для отправки по сети
     const int BufferMaxSize;       //Максимальный размер буфера
