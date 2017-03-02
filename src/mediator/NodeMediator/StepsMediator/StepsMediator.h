@@ -56,7 +56,7 @@ public:
      * @param nh дескриптор ноды ROS, чтобы подписвываться и публиковать
      * @param maxBufferSize размер буфера отпрвки, который будет выделен
      */
-    StepsMediator(ros::NodeHandle & nh, int maxBufferSize);
+    StepsMediator(ros::NodeHandle & nh);
 
     //Расчет шага закончен
     void ResultCallback(ar600_vision::StepResponse str);

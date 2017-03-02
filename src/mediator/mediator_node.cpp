@@ -88,7 +88,7 @@ int main(int argc, char ** argv)
     //Заполняем список медиаторов
     std::vector<NodeMediatorBase*> mediators =
     {
-        new StepsMediator(nh, 1000)
+        new StepsMediator(nh)
     };
 
 

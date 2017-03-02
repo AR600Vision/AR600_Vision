@@ -27,9 +27,6 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-# Ноды
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
 
 # Сервисы
 #add_service_files(
@@ -53,3 +50,8 @@ catkin_package()
 
 
 set(CMAKE_CXX_FLAGS "-Wno-deprecated")
+
+
+# Ноды
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)

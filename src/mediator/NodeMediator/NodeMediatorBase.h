@@ -28,9 +28,9 @@ public:
 
     /*!
      * Конструктор
-     * @param maxBufferSize размер буфера отпрвки, который будет выделен
+     * @param bufferMaxSize размер ответа
      */
-    NodeMediatorBase(int maxBufferSize);
+    NodeMediatorBase(int bufferMaxSize);
     ~NodeMediatorBase();
 
 
@@ -82,10 +82,6 @@ protected:
      */
     void Done(std::function<void(double*, int & count, int maxCount)> setter);
 
-    //TODO: временное решение
-    //В новом варианте с одним вызовом, размер возвращаемых нодой
-    //данных должен быть всегда одинаков
-    int DataSize;                  //Текущий размер полезных данных в буфере
 
 private:
     std::mutex _bufferMutex;        //Мьютекс
@@ -93,6 +89,7 @@ private:
 
     double* SendBuffer;            //Буфер для отправки по сети
     const int BufferMaxSize;       //Максимальный размер буфера
+    int DataSize;                  //Текущий размер полезных данных в буфере
 };
 
 

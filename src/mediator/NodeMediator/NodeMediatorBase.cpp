@@ -56,7 +56,7 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
     if(buffer!=nullptr)
         memcpy(buffer+1, SendBuffer, sizeof(double)*DataSize);
 
-    return DataSize + 1;
+    return BufferMaxSize + 1;
 }
 
 //Данные от ноды получены

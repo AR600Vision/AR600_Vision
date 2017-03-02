@@ -11,7 +11,6 @@
 #add_definitions(${PCL_DEFINITIONS})
 
 # Исполняемые файлы
-#TODO: Добавлять исходники в CMakeList.txt как-то более удобно
 add_executable(steps_controller     #имя результирующего файла - ноды
         src/steps_controller/steps_controller.cpp
         src/steps_controller/CloudTransforms/CloudTransforms.cpp

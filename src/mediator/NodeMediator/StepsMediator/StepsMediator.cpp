@@ -8,16 +8,14 @@ const char request_topic[]     = "steps_controller/step_request";
 const char response_topic[]    = "steps_controller/step_response";
 
 
-StepsMediator::StepsMediator(ros::NodeHandle & nh, int maxBufferSize) :
-        NodeMediatorBase(maxBufferSize)
+StepsMediator::StepsMediator(ros::NodeHandle & nh) :
+        NodeMediatorBase(7)
 {
     step_publisher = nh.advertise<geometry_msgs::PoseStamped>(request_topic, 100);
     step_subscriber = nh.subscribe(response_topic, 1, &StepsMediator::ResultCallback, this);
-
-    //TODO: Временное решение
-    DataSize = 7;
 }
 
+//Сколько данных требуется в запросе
 uint8_t StepsMediator::RequestLength()
 {
     return 6;
@@ -72,7 +70,7 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
 
         //TODO: А вторая нога?
 
-        //count = 7;
+        count = 7;
     });
 }
 
