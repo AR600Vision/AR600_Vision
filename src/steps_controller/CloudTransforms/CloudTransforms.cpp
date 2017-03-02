@@ -44,9 +44,9 @@ pcl::PointCloud<POINT_TYPE>::Ptr CloudTransforms::TransformCloud(pcl::PointCloud
     Eigen::Affine3f transforms = Eigen::Affine3f::Identity();
 
     //TODO: Может быть для корректного вращения надо вращать после поворота для приведения осей
-    transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(rotate.z), Eigen::Vector3f::UnitZ()));
-    transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(rotate.y), Eigen::Vector3f::UnitY()));
-    transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(rotate.x), Eigen::Vector3f::UnitZ()));
+    //transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(rotate.z), Eigen::Vector3f::UnitZ()));
+    //transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(rotate.y), Eigen::Vector3f::UnitY()));
+    //transforms.rotate(Eigen::AngleAxis<float>(Math::DegToRad(rotate.x), Eigen::Vector3f::UnitZ()));
 
     transforms.translation()<<translate.x, translate.y, translate.z;
 

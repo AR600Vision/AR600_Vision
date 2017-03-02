@@ -13,37 +13,14 @@ find_package(catkin REQUIRED COMPONENTS
         message_generation      # не подключается
         )
 
-# Дополнительные зависимости
-find_package(pcl_conversions)
-find_package(PCL 1.2 REQUIRED)
-
 include_directories(
         ${catkin_INCLUDE_DIRS}
         src)
 
+# Ноды
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
 
-# PCL
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
-
-
-# Сервисы
-#add_service_files(
-#        FILES
-#        StepsController.srv
-#)
-
-add_message_files(
-        FILES
-        StepResponse.msg
-)
-
-generate_messages(
-        DEPENDENCIES
-        std_msgs
-        geometry_msgs
-)
 
 # Declare a catkin package
 catkin_package()
@@ -51,7 +28,3 @@ catkin_package()
 
 set(CMAKE_CXX_FLAGS "-Wno-deprecated")
 
-
-# Ноды
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
-include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)

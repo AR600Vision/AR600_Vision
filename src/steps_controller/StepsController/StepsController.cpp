@@ -19,7 +19,7 @@ namespace StepsController
         //steps_params.DownsampleLeafSize = 0.01f;
         steps_params.ShiftX = 0;
         steps_params.ShiftY = 0;
-        steps_params.ShiftZ = 1;
+        steps_params.ShiftZ = 0.5;
         steps_params.RotX = 0;
         steps_params.RotY = 0;
         //steps_params.NormalSearchRadius = 0.05f;

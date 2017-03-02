@@ -17,6 +17,7 @@
  */
 
 #include <string>
+#include <iostream>
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -55,6 +56,8 @@ bool GetParams(ros::NodeHandle & nh, StepsParams & params);
 
 int main(int argc, char** argv)
 {
+    std::cout<<"wtf\n";
+
     //Инициализация ноды ROS
     ros::init(argc, argv, "StepsController");
 

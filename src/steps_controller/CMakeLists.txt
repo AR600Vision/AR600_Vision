@@ -1,14 +1,30 @@
 # Нода steps_controller
 
 # Дополнительные зависимости
-#find_package(pcl_conversions)
-#find_package(PCL 1.2 REQUIRED)
+find_package(pcl_conversions)
+find_package(PCL 1.2 REQUIRED)
 
+# Сервисы
+#add_service_files(
+#        FILES
+#        StepsController.srv
+#)
+
+add_message_files(
+        FILES
+        StepResponse.msg
+)
+
+generate_messages(
+        DEPENDENCIES
+        std_msgs
+        geometry_msgs
+)
 
 # PCL
-#include_directories(${PCL_INCLUDE_DIRS})
-#link_directories(${PCL_LIBRARY_DIRS})
-#add_definitions(${PCL_DEFINITIONS})
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 # Исполняемые файлы
 add_executable(steps_controller     #имя результирующего файла - ноды

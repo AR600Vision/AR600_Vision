@@ -170,6 +170,8 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
             if(elementsWrited==-1)
                 continue;
 
+            ROS_INFO("Response readed");
+
         }
         catch(std::exception ex)
         {
