@@ -2,7 +2,7 @@
 
 FIND_PACKAGE(OpenMP)
 
-add_definitions(-std=c++11) # it's for std::mutex support
+#add_definitions(-std=c++11) # it's for std::mutex support
 
 add_executable(mediator_node
         src/mediator/mediator_node.cpp
@@ -12,6 +12,10 @@ add_executable(mediator_node
 
 target_link_libraries(mediator_node  ${catkin_LIBRARIES})
 
+target_compile_options(mediator_node PRIVATE -std=c++11)
 
-add_executable(sockettest
-        src/mediator/sockettest.cpp)
+#SET ( CMAKE_CXX_FLAGS "-std=c++11" )
+
+add_executable(sockettest src/mediator/sockettest.cpp)
+
+target_compile_options(sockettest PRIVATE -std=c++11)

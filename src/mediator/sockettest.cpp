@@ -5,6 +5,7 @@
 #include <cstring>
 #include <omp.h>
 #include <unistd.h>
+#include <cstdio>
 
 using namespace std;
 
@@ -31,29 +32,32 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    double sendBuffer[]={0, 0, 0, 0, 0, 0};
+    double sendBuffer[]={1, 2, 3, 4, 5, 6};
     double recvBuffer[1000];
 
-    double time0 = omp_get_wtime();
-    double time;
+    test(si_other, s, sendBuffer, sizeof(sendBuffer), recvBuffer, sizeof(recvBuffer));
 
-    for(int i = 0; i<1000; i++)
+    double time = omp_get_wtime();
+
+    /*for(int i = 0; i<1000; i++)
     {
         int recvSize = test(si_other, s, sendBuffer, sizeof(sendBuffer), recvBuffer, sizeof(recvBuffer));
 
         if(recvSize!=-1 && recvBuffer[1]==1)
         {
-            time = omp_get_wtime()-time0;
+            time = omp_get_wtime() - time;
 
-            cout << setw(5) << setprecision(2) << recvBuffer[0] << " | "<<setw(5)<<setprecision(2)<<recvBuffer[1]<<" | ";
-            for(int i = 2; i<recvSize; i++)
-                cout<<setw(5)<<setprecision(2)<<recvBuffer[i]<<" ";
+            for (int i = 0; i < recvSize; i++)
+            {
+                printf("%lf\t", recvBuffer[i]);
+            }
 
-            cout<<" | "<<setw(5)<<setprecision(2)<< time<<"\n";
+            printf(" | %lf\n", time);
         }
 
         usleep(5000);
-    }
+    }*/
+
 
     return 0;
 }
@@ -77,6 +81,11 @@ int test(sockaddr_in & si_other, int s, double* sendBuffer, int sendBufferSize, 
     }
 
     recvSize/=sizeof(double);
+
+    for(int i = 0; i<recvSize; i++)
+    {
+        printf("%lf\t",recvBuffer[i]);
+    }
 
     return recvSize;
 }

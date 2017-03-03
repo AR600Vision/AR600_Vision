@@ -100,7 +100,7 @@ void StepsMediator::publish(float x, float y, float z)
     geometry_msgs::PoseStamped pose;
     pose.pose.position.x = x;
     pose.pose.position.y = y;
-    pose.pose.position.y = z;
+    pose.pose.position.z = z;
 
     ROS_INFO("steps_controller is called");
     step_publisher.publish(pose);

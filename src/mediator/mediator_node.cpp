@@ -153,6 +153,13 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
         ROS_INFO("Received data");
 
+        for(int i = 0; i<recvSize; i++)
+        {
+            std::cout<<buffer[i]<<" ";
+        }
+
+        std::cout<<"\n";
+
         //Разделяем запрос на части, распределяем между медиаторами,
         //вызываем, собираем результат обратно в массив
         //если в какой-то ноде на чтении или записи что-то кинект
@@ -160,13 +167,14 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
         try
         {
+            //Разделяем запрос между медиаторами
+            if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
+                continue;
+
+
             //Результаты предыдущего вызова
             elementsWrited  = ReadResponse(mediators,  si_frund, sock_desc, buffer, maxBufferSize);
             if(elementsWrited==-1)
-                continue;
-
-            //Разделяем запрос между медиаторами
-            if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
                 continue;
 
         }
@@ -177,12 +185,20 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
             continue;
         }
 
-        buffer[0] = (double)NO_ERROR;
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, elementsWrited * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
+        {
+            for(int i = 0; i<recvSize; i++)
+            {
+                std::cout<<buffer[i]<<" ";
+            }
+
+            std::cout<<"\n";
             ROS_INFO("Sent response");
+        }
         else
             ROS_ERROR("Error sending response. Error code: %d", errno);
+
 
     }
 }
@@ -219,7 +235,7 @@ bool SendRequests(const std::vector<NodeMediatorBase *> &mediators, sockaddr_in 
 //Собираем результаты
 int ReadResponse(std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, double *buffer, int maxBufferSize)
 {
-    int elementsWrited = 1;       //Начинаем с 1, потому что там статус
+    int elementsWrited = 0;       //Начинаем с 1, потому что там статус
     for(int i = 0; i<mediators.size(); i++)
     {
         int size = mediators[i]->ReadResponse(buffer + elementsWrited, maxBufferSize - elementsWrited);

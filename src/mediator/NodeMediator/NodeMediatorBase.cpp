@@ -52,11 +52,12 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
         return -1;
 
     //Устанавливаем флаг завершенности расчета
-    buffer[0] = (double)_isCalcFinished;
 
     //Копируем данные
     if(buffer!=nullptr)
-        memcpy(buffer+1, SendBuffer, sizeof(double)*DataSize);
+        memcpy(buffer, SendBuffer, sizeof(double)*DataSize);
+
+    buffer[BufferMaxSize] = (double)_isCalcFinished;
 
     return BufferMaxSize + 1;
 }
