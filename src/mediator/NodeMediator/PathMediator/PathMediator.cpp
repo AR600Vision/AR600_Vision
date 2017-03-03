@@ -19,10 +19,12 @@ uint8_t PathMediator::RequestLength()
 //Преобразует массив double в нужные параметры
 bool PathMediator::_SendRequest(const double* buffer, int count)
 {
-    throw std::logic_error("PathMediator is not updated for new mediator system");
 
     if(count<2)
+    {
+        ROS_ERROR("PathMediator: Not enough parameters");
         return false;
+    }
 
     geometry_msgs::PoseStamped goal;
     goal.pose.position.x = buffer[0];
@@ -32,19 +34,21 @@ bool PathMediator::_SendRequest(const double* buffer, int count)
     ROS_INFO("path planner is callled");
     goal_publisher.publish(goal);
 
+    ROS_INFO("path_controller is called");
+
     return true;
 }
 
 //Расчет тракетории законечен
 void PathMediator::Callback(nav_msgs::Path path)
 {
-    Done([&path](double* buffer, int & dataSize, int maxSize)
+    Done([&path](double* buffer, int & count, int maxCount)
     {
         //Преобразует ответ в массив double'во
         int steps_count = path.poses.size();
 
         //Под буфер требуется 2*steps_count+1
-        if(maxSize < 2 * steps_count + 1)
+        if(maxCount < 2 * steps_count + 1)
         {
             ROS_ERROR("PathMediator: Inner buffer is too small to contains all result data");
             throw std::overflow_error("Inner buffer is too small to contains all result data");
@@ -57,5 +61,7 @@ void PathMediator::Callback(nav_msgs::Path path)
             buffer[1 + 2*i + 1] = path.poses[i].pose.position.y;
             // TODO are we need their orientation or something like that?
         }
+
+        count = 2 * steps_count + 1;
     });
 }

@@ -62,7 +62,7 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
 }
 
 //Данные от ноды получены
-void NodeMediatorBase::Done(std::function<void(double*, int & count, int maxCount)> setter)
+void NodeMediatorBase::Done(std::function<void(double*, int & count, const int maxCount)> setter)
 {
     std::lock_guard<std::mutex> l(_bufferMutex);
     setter(SendBuffer, DataSize, BufferMaxSize);

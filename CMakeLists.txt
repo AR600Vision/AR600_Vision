@@ -26,5 +26,5 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
 catkin_package()
 
 
-set(CMAKE_CXX_FLAGS "-Wno-deprecated")
+set(CMAKE_CXX_FLAGS "-Wno-deprecated -fopenmp")
 

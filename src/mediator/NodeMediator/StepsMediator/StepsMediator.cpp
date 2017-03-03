@@ -24,8 +24,6 @@ uint8_t StepsMediator::RequestLength()
 
 bool StepsMediator::_SendRequest(const double* buffer, int count)
 {
-    ROS_INFO("SendRequest");
-
     if(count<RequestLength())
     {
         ROS_ERROR("StepsMediator: Not enough parameters");
@@ -70,7 +68,7 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
      */
 
 
-    Done([&step, this](double* buffer, int & count, int maxCount)
+    Done([&step, this](double* buffer, int & count, const int maxCount)
     {
         if(maxCount<7)
         {

@@ -80,7 +80,7 @@ protected:
      * Обертка над SetData, управляющая
      * синхронизацией и флагами
      */
-    void Done(std::function<void(double*, int & count, int maxCount)> setter);
+    void Done(std::function<void(double*, int & count, const int maxCount)> setter);
 
 
 private:
