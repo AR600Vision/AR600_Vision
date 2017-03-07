@@ -19,23 +19,42 @@ StepsMediator::StepsMediator(ros::NodeHandle & nh) :
 //Сколько данных требуется в запросе
 uint8_t StepsMediator::RequestLength()
 {
-    return 6;
+    return 7;
 }
 
-bool StepsMediator::_SendRequest(const double* buffer, int count)
+bool StepsMediator::_SendRequest(const double* inBuffer, int count)
 {
-    if(count<RequestLength())
+    if (count < RequestLength())
     {
         ROS_ERROR("StepsMediator: Not enough parameters");
         return false;
     }
 
-    publish(buffer[0], buffer[1], buffer[2]);
-    _xs = buffer[3]; _ys=buffer[4]; _zs=buffer[5];
+    if (inBuffer[6] == 1)
+    {
+        publish(inBuffer[0], inBuffer[1], inBuffer[2]);
+        _xs = inBuffer[3];
+        _ys = inBuffer[4];
+        _zs = inBuffer[5];
 
-    stepCnt++;
+        stepCnt++;
 
-    return true;
+        return false;
+    }
+    else
+    {
+        Done([&inBuffer, this](double* buffer, int & count, const int maxCount)
+        {
+            //memcpy(buffer, inBuffer, 7);
+            for(int i = 0; i<7; i++)
+                buffer[i]=inBuffer[i];
+            count = 7;
+        });
+
+        return true;
+    }
+
+    //return true;
 }
 
 //расчет шага закончен
@@ -86,7 +105,7 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
         buffer[4]=step.Pose.position.y;
         buffer[5]=step.Pose.position.z;
 
-        buffer[6]=step.CanStep & canStep;
+        buffer[6]= (step.CanStep & canStep) ? 10 : 0;
 
         count = 7;
     });

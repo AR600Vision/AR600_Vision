@@ -100,6 +100,9 @@ int main(int argc, char ** argv)
     return 0;
 }
 
+int wtfcnt=0;
+bool isOne = false;
+
 //Функция слушания
 void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & mediators)
 {
@@ -153,19 +156,19 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
         ROS_INFO("Received data");
 
-        for(int i = 0; i<recvSize; i++)
+        /*for(int i = 0; i<recvSize; i++)
         {
             std::cout<<buffer[i]<<" ";
         }
 
-        std::cout<<"\n";
+        std::cout<<"\n";*/
 
         //Разделяем запрос на части, распределяем между медиаторами,
         //вызываем, собираем результат обратно в массив
         //если в какой-то ноде на чтении или записи что-то кинект
         //исключение, то весь цикл вызова-сбора прервется
 
-        try
+        /*try
         {
             //Разделяем запрос между медиаторами
             if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
@@ -183,15 +186,40 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
             ROS_ERROR("Internal error in node: %s",ex.what());
             sendError(sock_desc, si_frund, NODE_INTERNAL_ERROR);
             continue;
+        }*/
+
+        if(buffer[6]==1)
+        {
+            std::cout<<"1 ";
+            isOne = true;
         }
+
+
+        if(isOne)
+        {
+            wtfcnt++;
+            std::cout<<wtfcnt<<" ";
+        }
+
+        if(wtfcnt>10)
+        {
+            buffer[6]=10;
+            isOne=false;
+            wtfcnt=0;
+            std::cout<<"10!!!!!!!";
+        }
+
+        std::cout<<"\n";
+
+        elementsWrited = 10;
 
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, elementsWrited * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
-            for(int i = 0; i<recvSize; i++)
+            /*for(int i = 0; i<recvSize; i++)
             {
                 std::cout<<buffer[i]<<" ";
-            }
+            }*/
 
             std::cout<<"\n";
             ROS_INFO("Sent response");

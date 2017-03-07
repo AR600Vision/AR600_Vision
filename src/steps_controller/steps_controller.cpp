@@ -132,6 +132,8 @@ void request_callback(const geometry_msgs::PoseStamped point)
 
     //Тестирование фрунда
     ar600_vision::StepResponse response;
+
+
     response.CanStep = 1;
     response.Pose.position.x = x + 1;
     response.Pose.position.y = y + 1;

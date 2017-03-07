@@ -68,10 +68,10 @@ protected:
     /*!
      * Преобразует массив double в нужные параметры
      * и отправляет в топик
-     * @param buffer
+     * @param inBuffer
      * @param count
      */
-    virtual bool _SendRequest(const double* buffer, int count) override;
+    virtual bool _SendRequest(const double* inBuffer, int count) override;
 
 private:
     ros::Publisher step_publisher;
