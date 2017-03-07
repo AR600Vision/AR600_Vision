@@ -11,6 +11,17 @@
 #include <functional>
 
 /*!
+ * Результат отправки запроса
+ */
+enum SendStatus
+{
+    DONE,
+    PUBLISHED,
+    ERROR
+};
+
+
+/*!
  * @brief Базовый класс, реализующий взаимодействие с нодой
  *
  * Релизует блокировки, установку флагов.
@@ -70,7 +81,7 @@ protected:
      * @param buffer
      * @param count
      */
-    virtual bool _SendRequest(const double* buffer, int count) = 0;
+    virtual SendStatus _SendRequest(const double* buffer, int count) = 0;
 
     /*!
      * @brief Сигнализирует о том, что результат получен
@@ -83,14 +94,14 @@ protected:
     void Done(std::function<void(double*, int & count, const int maxCount)> setter);
 
 
+    const int BufferMaxSize;       //Максимальный размер буфера
+    int DataSize;                  //Текущий размер полезных данных в буфере
+    double* SendBuffer;            //Буфер для отправки по сети
+
 private:
     std::mutex _bufferMutex;        //Мьютекс
     bool _isCalcFinished;
     bool _firstCall;
-
-    double* SendBuffer;            //Буфер для отправки по сети
-    const int BufferMaxSize;       //Максимальный размер буфера
-    int DataSize;                  //Текущий размер полезных данных в буфере
 };
 
 

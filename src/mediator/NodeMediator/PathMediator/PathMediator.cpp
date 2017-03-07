@@ -17,13 +17,13 @@ uint8_t PathMediator::RequestLength()
 }
 
 //Преобразует массив double в нужные параметры
-bool PathMediator::_SendRequest(const double* buffer, int count)
+SendStatus PathMediator::_SendRequest(const double* buffer, int count)
 {
 
     if(count<2)
     {
         ROS_ERROR("PathMediator: Not enough parameters");
-        return false;
+        return ERROR;
     }
 
     geometry_msgs::PoseStamped goal;
@@ -36,7 +36,7 @@ bool PathMediator::_SendRequest(const double* buffer, int count)
 
     ROS_INFO("path_controller is called");
 
-    return true;
+    return PUBLISHED;
 }
 
 //Расчет тракетории законечен

@@ -27,18 +27,24 @@ NodeMediatorBase::~NodeMediatorBase()
 //Отправка запроса ноде
 bool NodeMediatorBase::SendRequest(const double* buffer, int count)
 {
-    //std::lock_guard<std::mutex> l(_bufferMutex);
+    std::lock_guard<std::mutex> l(_bufferMutex);
 
     if(_isCalcFinished || _firstCall)
     {
-        _isCalcFinished = _SendRequest(buffer, count);
-        _firstCall = false;
+        auto status = _SendRequest(buffer, count);
 
-        /*if(isOk)
+        if(status==PUBLISHED)
+        {
             _isCalcFinished = false;
-
-        return isOk;*/
-        return true;
+            return true;
+        }
+        else if(status==DONE)
+        {
+            _isCalcFinished = true;
+            return true;
+        }
+        else
+            return false;
     }
     else
         return true;
@@ -66,7 +72,7 @@ int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
 //Данные от ноды получены
 void NodeMediatorBase::Done(std::function<void(double*, int & count, const int maxCount)> setter)
 {
-    //std::lock_guard<std::mutex> l(_bufferMutex);
+    std::lock_guard<std::mutex> l(_bufferMutex);
     setter(SendBuffer, DataSize, BufferMaxSize);
     _isCalcFinished = true;
 

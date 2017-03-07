@@ -32,7 +32,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    double sendBuffer[]={1, 2, 3, 4, 5, 6, 0};
+    double sendBuffer[]={1, 2, 3, 4, 5, 6, 1};
     double recvBuffer[1000];
 
     test(si_other, s, sendBuffer, sizeof(sendBuffer), recvBuffer, sizeof(recvBuffer));

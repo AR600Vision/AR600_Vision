@@ -71,7 +71,7 @@ protected:
      * @param inBuffer
      * @param count
      */
-    virtual bool _SendRequest(const double* inBuffer, int count) override;
+    virtual SendStatus _SendRequest(const double* inBuffer, int count) override;
 
 private:
     ros::Publisher step_publisher;

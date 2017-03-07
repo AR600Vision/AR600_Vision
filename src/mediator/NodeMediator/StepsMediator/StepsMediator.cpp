@@ -22,16 +22,17 @@ uint8_t StepsMediator::RequestLength()
     return 7;
 }
 
-bool StepsMediator::_SendRequest(const double* inBuffer, int count)
+SendStatus StepsMediator::_SendRequest(const double* inBuffer, int count)
 {
     if (count < RequestLength())
     {
         ROS_ERROR("StepsMediator: Not enough parameters");
-        return false;
+        return ERROR;
     }
 
     if (inBuffer[6] == 1)
     {
+        //Надо считать
         publish(inBuffer[0], inBuffer[1], inBuffer[2]);
         _xs = inBuffer[3];
         _ys = inBuffer[4];
@@ -39,19 +40,13 @@ bool StepsMediator::_SendRequest(const double* inBuffer, int count)
 
         stepCnt++;
 
-        return false;
+        return PUBLISHED;
     }
     else
     {
-        Done([&inBuffer, this](double* buffer, int & count, const int maxCount)
-        {
-            //memcpy(buffer, inBuffer, 7);
-            for(int i = 0; i<7; i++)
-                buffer[i]=inBuffer[i];
-            count = 7;
-        });
-
-        return true;
+        //Считать не надо, просто возвращаем вход
+        memcpy(SendBuffer, inBuffer, 7);
+        return DONE;
     }
 
     //return true;

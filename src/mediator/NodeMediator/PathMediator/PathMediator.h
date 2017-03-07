@@ -33,7 +33,7 @@ protected:
      * @param buffer
      * @param count
      */
-    virtual bool _SendRequest(const double* buffer, int count) override;
+    virtual SendStatus _SendRequest(const double* buffer, int count) override;
 
 private:
     ros::Subscriber path_subscriber;
