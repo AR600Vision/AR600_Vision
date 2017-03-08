@@ -19,7 +19,7 @@
 
 #include "NodeMediator/NodeMediatorBase.h"
 #include "NodeMediator/StepsMediator/StepsMediator.h"
-//#include "NodeMediator/PathMediator/PathMediator.h"
+#include "NodeMediator/PathMediator/PathMediator.h"
 
 
 StepsMediator* stepsMediator;

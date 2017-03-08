@@ -62,8 +62,7 @@ public:
     void ResultCallback(ar600_vision::StepResponse str);
 
     /*!
-     * Преобразует массив double в нужные параметры
-     * и отправляет в топик
+     * Отправляет запрос
      */
     virtual void SendRequest(double xsl, double ysl, double zsl, double xsr, double ysr, double zsr);
 

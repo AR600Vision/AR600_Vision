@@ -20,18 +20,13 @@ public:
      */
     PathMediator(ros::NodeHandle nh, int maxBufferSize);
 
+    /*!
+     * Отправляет запрос
+     */
+    void SendRequest(double posX, double posY);
+
     //Расчет тракетории законечен
     void Callback(nav_msgs::Path path);
-
-protected:
-
-    /*!
-     * Преобразует массив double в нужные параметры
-     * и отправляет в топик
-     * @param buffer
-     * @param count
-     */
-    virtual SendStatus _SendRequest(const double* buffer, int count) override;
 
 private:
     ros::Subscriber path_subscriber;
