@@ -16,40 +16,21 @@ StepsMediator::StepsMediator(ros::NodeHandle & nh) :
     stepCnt=0;
 }
 
-//Сколько данных требуется в запросе
-uint8_t StepsMediator::RequestLength()
+void StepsMediator::SendRequest(double xsl, double ysl, double zsl, double xsr, double ysr, double zsr)
 {
-    return 7;
-}
+    std::lock_guard<std::mutex> l(Mutex);
 
-SendStatus StepsMediator::_SendRequest(const double* inBuffer, int count)
-{
-    if (count < RequestLength())
-    {
-        ROS_ERROR("StepsMediator: Not enough parameters");
-        return ERROR;
-    }
+    if(!isDone)
+        return;
 
-    if (inBuffer[6] == 1)
-    {
-        //Надо считать
-        publish(inBuffer[0], inBuffer[1], inBuffer[2]);
-        _xs = inBuffer[3];
-        _ys = inBuffer[4];
-        _zs = inBuffer[5];
+    //Надо считать
+    publish(xsl, ysl, zsl);
+    _xs = xsr;
+    _ys = ysr;
+    _zs = zsr;
 
-        stepCnt++;
-
-        return PUBLISHED;
-    }
-    else
-    {
-        //Считать не надо, просто возвращаем вход
-        memcpy(SendBuffer, inBuffer, 7);
-        return DONE;
-    }
-
-    //return true;
+    stepCnt++;
+    isDone = false;
 }
 
 //расчет шага закончен
@@ -71,41 +52,30 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
         return;
     }
 
-
-    /* Вызываем функцию Done, чтобы указать, что расчет закончен.
-     * В нее мы передаем лямбда-функцию, которая принимает
-     * буфер и размер, в которые мы устанавливаем те данные,
-     * которые хотим передать.
-     *
-     * Лямбда функция может захватывать значения из внешнего контекста,
-     * в данном случае - str по ссылке.
-     */
-
-
-    Done([&step, this](double* buffer, int & count, const int maxCount)
+    if(BufferMaxSize<7)
     {
-        if(maxCount<7)
-        {
-            ROS_ERROR("StepsMediator: Inner buffer is too small to contains all result data");
-            throw std::overflow_error("Inner buffer is too small to contains all result data");
-        }
+        ROS_ERROR("StepsMediator: Inner buffer is too small to contains all result data");
+        throw std::overflow_error("Inner buffer is too small to contains all result data");
+    }
 
-        //Левая нога
-        buffer[0]=_xs;
-        buffer[1]=_ys;
-        buffer[2]=_zs;
+    Mutex.lock();
 
-        //Правая нога
-        buffer[3]=step.Pose.position.x;
-        buffer[4]=step.Pose.position.y;
-        buffer[5]=step.Pose.position.z;
+    //Левая нога
+    SendBuffer[0]=_xs;
+    SendBuffer[1]=_ys;
+    SendBuffer[2]=_zs;
 
-        buffer[6]= (step.CanStep & canStep) ? 10 : 0;
+    //Правая нога
+    SendBuffer[3]=step.Pose.position.x;
+    SendBuffer[4]=step.Pose.position.y;
+    SendBuffer[5]=step.Pose.position.z;
 
-        count = 7;
-    });
+    SendBuffer[6]= (step.CanStep & canStep) ? 10 : 0;
 
     stepCnt=0;
+    isDone = true;
+
+    Mutex.unlock();
 }
 
 //Публикует в топик

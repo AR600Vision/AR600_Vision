@@ -4,17 +4,14 @@
 
 
 #include "NodeMediatorBase.h"
-#include <iostream>
 
 NodeMediatorBase::NodeMediatorBase(int maxBufferSize):
-        _bufferMutex(),
+        Mutex(),
         BufferMaxSize(maxBufferSize)
 {
     //Инициализация буфферов и прочего
     SendBuffer = new double[BufferMaxSize];
-    _isCalcFinished = false;
-    _firstCall = true;
-    DataSize = 0;
+    isDone = true;
     memset(SendBuffer,  0, sizeof(double)*BufferMaxSize);
 }
 
@@ -24,56 +21,29 @@ NodeMediatorBase::~NodeMediatorBase()
         delete[] SendBuffer;
 }
 
-//Отправка запроса ноде
-bool NodeMediatorBase::SendRequest(const double* buffer, int count)
-{
-    std::lock_guard<std::mutex> l(_bufferMutex);
-
-    if(_isCalcFinished || _firstCall)
-    {
-        auto status = _SendRequest(buffer, count);
-
-        if(status==PUBLISHED)
-        {
-            _isCalcFinished = false;
-            return true;
-        }
-        else if(status==DONE)
-        {
-            _isCalcFinished = true;
-            return true;
-        }
-        else
-            return false;
-    }
-    else
-        return true;
-}
-
 //Чтение результата
 int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
 {
-    std::lock_guard<std::mutex> l(_bufferMutex);
+    std::lock_guard<std::mutex> l(Mutex);
 
-    if(DataSize + 1 > maxCount)
+    if(BufferMaxSize + 1 > maxCount)
+    {
+        ROS_ERROR("Buffer is too small to copy response");
         return -1;
-
-    //Устанавливаем флаг завершенности расчета
+    }
 
     //Копируем данные
     if(buffer!=nullptr)
-        memcpy(buffer, SendBuffer, sizeof(double)*DataSize);
-
-    buffer[BufferMaxSize] = (double)_isCalcFinished;
+    {
+        memcpy(buffer, SendBuffer, sizeof(double) * BufferMaxSize);
+        buffer[BufferMaxSize] = isDone;
+    }
 
     return BufferMaxSize + 1;
 }
 
-//Данные от ноды получены
-void NodeMediatorBase::Done(std::function<void(double*, int & count, const int maxCount)> setter)
+//Завершен ли расчет
+bool NodeMediatorBase::IsDone()
 {
-    std::lock_guard<std::mutex> l(_bufferMutex);
-    setter(SendBuffer, DataSize, BufferMaxSize);
-    _isCalcFinished = true;
-
+    return isDone;
 }

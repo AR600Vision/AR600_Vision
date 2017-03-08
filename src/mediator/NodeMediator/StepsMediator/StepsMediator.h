@@ -61,17 +61,11 @@ public:
     //Расчет шага закончен
     void ResultCallback(ar600_vision::StepResponse str);
 
-    virtual uint8_t RequestLength() override ;
-
-protected:
-
     /*!
      * Преобразует массив double в нужные параметры
      * и отправляет в топик
-     * @param inBuffer
-     * @param count
      */
-    virtual SendStatus _SendRequest(const double* inBuffer, int count) override;
+    virtual void SendRequest(double xsl, double ysl, double zsl, double xsr, double ysr, double zsr);
 
 private:
     ros::Publisher step_publisher;

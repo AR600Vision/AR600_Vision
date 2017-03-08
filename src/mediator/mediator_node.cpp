@@ -7,31 +7,6 @@
  *
  *  Принимает запросы по UDP от ФРУНДа, асинхронно вызывает
  *  ноды, возвращает ответы
- *
- *  -------------------- ФОРМАТ ДАННЫХ --------------------
- *  данные пеередаются в виде массива double
- *
- *  Запрос:
- *  |------ ... ---|------ ... ---|--- ... ---|------ ... ---|
- *  | data 1       | data 2       |           | data n       |
- *  |------ ... ---|------ ... ---|--- ... ---|------ ... ---|
- *
- *  data1..n   Данные запроса к i-й ноде
- *
- *  Ответ:
- *  |--------|--------|------ ... ---|--------|------ ... ---|------|--- ... ---|--------|------ ... ---|
- *  | status | done 1 | data 1       | done m | data 2       | done |           | done m | data m       |
- *  |--------|--------|------ ... ---|--------|------ ... ---|------|--- ... ---|--------|------ ... ---|
- *
- *  status        Код ошибки
- *  done1..m      Расчет завершен (0/1)
- *  data1..m      Результат расчета i-й нодой
- *
- *  КОДЫ ОШИБОК:
- *   0     Без ошибок
- *   1     Неверный формат пакета
- *   2     Запрошенная нода не найдена
- *   3     Неизвестная внутренняя ошибка в ноде
  */
 
 #include <ros/ros.h>
@@ -44,18 +19,10 @@
 
 #include "NodeMediator/NodeMediatorBase.h"
 #include "NodeMediator/StepsMediator/StepsMediator.h"
-#include "NodeMediator/PathMediator/PathMediator.h"
+//#include "NodeMediator/PathMediator/PathMediator.h"
 
-/*!
- * Коды ошибок
- */
-enum ERRORS
-{
-    NO_ERROR,
-    INVALID_PACKAGE_FORMAT,
-    MEDIATOR_ERROR,
-    NODE_INTERNAL_ERROR
-};
+
+StepsMediator* stepsMediator;
 
 bool isReceive;
 
@@ -65,35 +32,21 @@ bool isReceive;
  * @param maxBufferSize максимальный размер буфера приема, отправки
  * @param mediators список обработчиков
  */
-void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & mediators);
+void receiveFunc(int port, int maxBufferSize);
 
-/*!
- * Отправляет код ошибки
- * @param sock_desc
- * @param si_frund
- */
-void sendError(int sock_desc, sockaddr_in si_frund, ERRORS error);
-
-bool SendRequests(const std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, const double *buffer, ssize_t recvSize);
-int ReadResponse(std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, double *buffer, int maxBufferSize);
 
 int main(int argc, char ** argv)
 {
-
     ros::init(argc, argv, "ar600e_receiver_node");
     ros::NodeHandle nh;
 
-    ROS_INFO("Receiver node started...");
+    stepsMediator = new StepsMediator(nh);
 
-    //Заполняем список медиаторов
-    std::vector<NodeMediatorBase*> mediators =
-    {
-        new StepsMediator(nh)
-    };
+    ROS_INFO("Receiver node started...");
 
 
     isReceive = true;
-    std::thread listenThread(receiveFunc, 12833, 1000, std::ref(mediators));
+    std::thread listenThread(receiveFunc, 12833, 10);
     listenThread.detach();
 
     ros::spin();
@@ -101,11 +54,13 @@ int main(int argc, char ** argv)
 }
 
 //Функция слушания
-void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & mediators)
+void receiveFunc(int port, int maxBufferSize)
 {
     sockaddr_in si_frund;
     sockaddr_in si_me;
-    int elementsWrited;
+
+    //Количество отсылаемых элементов
+    int sendSize = 6 + 1 + 1;
 
     /// Create socket
     int sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -160,33 +115,16 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
         std::cout<<"\n";
 
-        //Разделяем запрос на части, распределяем между медиаторами,
-        //вызываем, собираем результат обратно в массив
-        //если в какой-то ноде на чтении или записи что-то кинект
-        //исключение, то весь цикл вызова-сбора прервется
-
-        try
+        //Отправка запросов
+        if(buffer[6]==1)
         {
-            //Разделяем запрос между медиаторами
-            if(!SendRequests(mediators, si_frund, sock_desc, buffer, recvSize))
-                continue;
-
-
-            //Результаты предыдущего вызова
-            elementsWrited  = ReadResponse(mediators,  si_frund, sock_desc, buffer, maxBufferSize);
-            if(elementsWrited==-1)
-                continue;
-
+            stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+            stepsMediator->ReadResponse(buffer, maxBufferSize);
         }
-        catch(std::exception ex)
-        {
-            ROS_ERROR("Internal error in node: %s",ex.what());
-            sendError(sock_desc, si_frund, NODE_INTERNAL_ERROR);
-            continue;
-        }
+
 
         socklen_t slen_res = sizeof(si_frund);
-        if(sendto(sock_desc, buffer, elementsWrited * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
+        if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
             for(int i = 0; i<recvSize; i++)
             {
@@ -201,60 +139,4 @@ void receiveFunc(int port, int maxBufferSize, std::vector<NodeMediatorBase*> & m
 
 
     }
-}
-
-
-
-//Раздаеляет запрос на запросы к отдельным медиаторам
-bool SendRequests(const std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, const double *buffer, ssize_t recvSize)
-{
-    int elementsRead = 0;
-    for (int i = 0; i < mediators.size(); i++)
-    {
-        int requiredRequestLength = mediators[i]->RequestLength();
-        if(recvSize - elementsRead < requiredRequestLength)
-        {
-            ROS_ERROR("Not enough paramters");
-            sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
-            return false;
-        }
-
-        if(!mediators[i]->SendRequest(buffer+elementsRead, requiredRequestLength))
-        {
-            ROS_ERROR("Not enough paramters");
-            sendError(sock_desc, si_frund, INVALID_PACKAGE_FORMAT);
-            return false;
-        }
-
-        elementsRead+=requiredRequestLength;
-    }
-
-    return true;
-}
-
-//Собираем результаты
-int ReadResponse(std::vector<NodeMediatorBase *> &mediators, sockaddr_in si_frund, int sock_desc, double *buffer, int maxBufferSize)
-{
-    int elementsWrited = 0;       //Начинаем с 1, потому что там статус
-    for(int i = 0; i<mediators.size(); i++)
-    {
-        int size = mediators[i]->ReadResponse(buffer + elementsWrited, maxBufferSize - elementsWrited);
-        if (size == -1) {
-            ROS_ERROR("Buffer is too small to contains all response data");
-            sendError(sock_desc, si_frund, MEDIATOR_ERROR);
-            return -1;
-        }
-
-        elementsWrited += size;
-    }
-
-    return elementsWrited;
-}
-
-//Отправляет код ошибки
-void sendError(int sock_desc, sockaddr_in si_frund, ERRORS error)
-{
-    socklen_t slen_res = sizeof(si_frund);
-    double errorDouble = (double)error;
-    sendto(sock_desc, &errorDouble, sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res);
 }

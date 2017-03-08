@@ -23,8 +23,6 @@ public:
     //Расчет тракетории законечен
     void Callback(nav_msgs::Path path);
 
-    virtual uint8_t RequestLength() override ;
-
 protected:
 
     /*!
