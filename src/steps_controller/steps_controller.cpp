@@ -134,10 +134,13 @@ void request_callback(const geometry_msgs::PoseStamped point)
     ar600_vision::StepResponse response;
 
 
+    usleep(3000);
+
+
     response.CanStep = 1;
-    response.Pose.position.x = x + 1;
-    response.Pose.position.y = y + 1;
-    response.Pose.position.z = z + 1;
+    response.Pose.position.x = x;// + 1;
+    response.Pose.position.y = y;// + 1;
+    response.Pose.position.z = z;// + 1;
     responsePublisher.publish(response);
 
     requestCnt++;

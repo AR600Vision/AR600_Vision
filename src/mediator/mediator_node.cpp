@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <thread>
+#include <fstream>
 
 
 #include "NodeMediator/NodeMediatorBase.h"
@@ -33,6 +34,10 @@ bool isReceive;
  * @param mediators список обработчиков
  */
 void receiveFunc(int port, int maxBufferSize);
+int receive(int socket, double* buffer, int maxBufferSize, sockaddr_in* si_frund);
+
+int counter = 0;
+int fakeCnt = 0;
 
 
 int main(int argc, char ** argv)
@@ -85,26 +90,19 @@ void receiveFunc(int port, int maxBufferSize)
 
     ROS_INFO("UDP listen thread started...");
 
+
+    std::ofstream f;
+    f.open("/home/user/file.txt", std::ios_base::out | std::ios_base::trunc);
+    f << "TIME\txl\tyl\tzl\txr\tyr\tzr\tcan_step\n";
+    //f.close();
+
     //Цикл приема запросов
     while (isReceive)
     {
-        //Принимаем данные
-        socklen_t slen_req = sizeof(si_frund);
-        ssize_t recvSize = recvfrom(sock_desc, buffer, maxBufferSize * sizeof(double), 0, (sockaddr *) &si_frund,
-                                    &slen_req);
 
-        //Проверка корректности данных
-        if (recvSize == -1) {
-            ROS_ERROR("Error receiving data.Error code: %d", errno);
-            continue;
-        }
-
-        if (recvSize % sizeof(double) != 0) {
-            ROS_ERROR("Received data isn't array of doubles");
-            continue;
-        }
-
-        recvSize /= sizeof(double);
+        ssize_t recvSize;
+        if((recvSize=receive(sock_desc, buffer, maxBufferSize, &si_frund))==-1)
+            return;
 
         ROS_INFO("Received data");
 
@@ -118,25 +116,62 @@ void receiveFunc(int port, int maxBufferSize)
         //Отправка запросов
         if(buffer[6]==1)
         {
-            stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-            stepsMediator->ReadResponse(buffer, maxBufferSize);
+            std::cout<<"1111111111111111111111111111111111111111111111111111111111111111111\n";
+            fakeCnt++;
+
+            //stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+            //stepsMediator->ReadResponse(buffer, maxBufferSize);
         }
 
+        if(fakeCnt>=10)
+        {
+            buffer[6]=10;
+            fakeCnt=0;
+        }
 
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
-            for(int i = 0; i<recvSize; i++)
+            f<<counter*0.05<<"\t";
+            for(int i = 0; i<7; i++)
             {
-                std::cout<<buffer[i]<<" ";
+                std::cout<<buffer[i]<<"\t";
+                f<<buffer[i]<<"\t";
             }
 
             std::cout<<"\n";
+            f<<"\n";
             ROS_INFO("Sent response");
         }
         else
             ROS_ERROR("Error sending response. Error code: %d", errno);
 
 
+
+        f.flush();
+        counter++;
+
     }
+}
+
+
+int receive(int socket, double* buffer, int maxBufferSize, sockaddr_in* si_frund)
+{
+    //Принимаем данные
+    socklen_t slen_req = sizeof(si_frund);
+    ssize_t recvSize = recvfrom(socket, buffer, maxBufferSize * sizeof(double), 0, (sockaddr *) si_frund,
+                                &slen_req);
+
+    //Проверка корректности данных
+    if (recvSize == -1) {
+        ROS_ERROR("Error receiving data.Error code: %d", errno);
+        return -1;
+    }
+
+    if (recvSize % sizeof(double) != 0) {
+        ROS_ERROR("Received data isn't array of doubles");
+        return -1;
+    }
+
+   return recvSize / sizeof(double);
 }
