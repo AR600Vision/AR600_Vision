@@ -16,6 +16,9 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <fstream>
+#include <omp.h>
+
+#include <tf/transform_listener.h>
 
 
 #include "NodeMediator/NodeMediatorBase.h"
@@ -92,8 +95,8 @@ void receiveFunc(int port, int maxBufferSize)
 
 
     std::ofstream f;
-    f.open("/home/user/file.txt", std::ios_base::out | std::ios_base::trunc);
-    f << "TIME\txl\tyl\tzl\txr\tyr\tzr\tcan_step\n";
+    f.open("/home/aleksey/Downloads/my.txt", std::ios_base::out | std::ios_base::trunc);
+    f << "TIME  xl  yl  zl  xr  yr  zr  can_step\n";
     //f.close();
 
     //Цикл приема запросов
@@ -114,7 +117,7 @@ void receiveFunc(int port, int maxBufferSize)
         std::cout<<"\n";
 
         //Отправка запросов
-        if(buffer[6]==1)
+        /*if(buffer[6]==1)
         {
             std::cout<<"1111111111111111111111111111111111111111111111111111111111111111111\n";
             fakeCnt++;
@@ -127,16 +130,48 @@ void receiveFunc(int port, int maxBufferSize)
         {
             buffer[6]=10;
             fakeCnt=0;
+        }*/
+
+
+        tf::TransformListener listener;
+        tf::StampedTransform transform;
+        try
+        {
+            listener.waitForTransform("/odom", "/camera_link", ros::Time(0), ros::Duration(3));
+            listener.lookupTransform("/odom", "/camera_link", ros::Time(0), transform);
+        }
+        catch (tf::TransformException ex)
+        {
+            ROS_ERROR("%s",ex.what());
         }
 
+        tf::Vector3 position = transform.getOrigin();
+        tf::Quaternion q = transform.getRotation();
+        q.normalize(); // fixme At first we don't normalized quaternion.
+        // fixme At second, Quaternion is child class of QuadWord, which has methods x, y, z, w
+        buffer[0] = position.x();
+        buffer[1] = position.y();
+        buffer[2] = position.z();
+        buffer[3] = q.x();
+        buffer[4] = q.y();
+        buffer[5] = q.z();
+        buffer[6] = q.w();
+
+        // Get angle
+        tf::Matrix3x3 m(q);
+        double row, pitch, yaw;
+        m.getRPY(row, pitch, yaw);
+
+        // Test send
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
-            f<<counter*0.05<<"\t";
-            for(int i = 0; i<7; i++)
+            f<<counter *  0.005<<"  ";
+            f<<omp_get_wtime()<<"  ";
+            for(int i = 1; i<7; i++)
             {
                 std::cout<<buffer[i]<<"\t";
-                f<<buffer[i]<<"\t";
+                f<<buffer[i]<<"  ";
             }
 
             std::cout<<"\n";

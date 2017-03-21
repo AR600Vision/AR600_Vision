@@ -18,4 +18,4 @@ target_compile_options(mediator_node PRIVATE -std=c++11)
 
 add_executable(sockettest src/mediator/sockettest.cpp)
 
-target_compile_options(sockettest PRIVATE -std=c++11)
+target_compile_options(sockettest PRIVATE -std=c++11 -fopenmp)
