@@ -19,8 +19,6 @@ StepsMediator::StepsMediator(ros::NodeHandle & nh) :
 void StepsMediator::SendRequest(double xsl, double ysl, double zsl, double xsr, double ysr, double zsr)
 {
     std::lock_guard<std::mutex> l(Mutex);
-    std::cout<<"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n";
-
 
     if(!isDone)
         return;
@@ -73,7 +71,6 @@ void StepsMediator::ResultCallback(ar600_vision::StepResponse step)
     SendBuffer[5]=step.Pose.position.z;
 
     SendBuffer[6]= (step.CanStep & canStep) ? 10 : 0;
-    std::cout<<"===========================================================\n";
 
     stepCnt=0;
     isDone = true;

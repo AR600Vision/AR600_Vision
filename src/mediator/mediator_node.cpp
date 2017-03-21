@@ -16,28 +16,27 @@
 #include <arpa/inet.h>
 #include <thread>
 #include <fstream>
+#include <chrono>
 
 
 #include "NodeMediator/NodeMediatorBase.h"
 #include "NodeMediator/StepsMediator/StepsMediator.h"
 #include "NodeMediator/PathMediator/PathMediator.h"
 
+using namespace std;
+using namespace std::chrono;
 
 StepsMediator* stepsMediator;
 
 bool isReceive;
+steady_clock::time_point start;
 
-/*!
- * Функция слушания
- * @param port порт слушания
- * @param maxBufferSize максимальный размер буфера приема, отправки
- * @param mediators список обработчиков
- */
 void receiveFunc(int port, int maxBufferSize);
 int receive(int socket, double* buffer, int maxBufferSize, sockaddr_in* si_frund);
+double getSeconds();
 
-int counter = 0;
-int fakeCnt = 0;
+//float fakeTime = 0;
+//int fakeCnt = 0;
 
 
 int main(int argc, char ** argv)
@@ -48,7 +47,7 @@ int main(int argc, char ** argv)
     stepsMediator = new StepsMediator(nh);
 
     ROS_INFO("Receiver node started...");
-
+    start = steady_clock::now();
 
     isReceive = true;
     std::thread listenThread(receiveFunc, 12833, 10);
@@ -65,7 +64,7 @@ void receiveFunc(int port, int maxBufferSize)
     sockaddr_in si_me;
 
     //Количество отсылаемых элементов
-    int sendSize = 6 + 1 + 1;
+    int sendSize = 6 + 1 + 1; //wtf???
 
     /// Create socket
     int sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -91,10 +90,10 @@ void receiveFunc(int port, int maxBufferSize)
     ROS_INFO("UDP listen thread started...");
 
 
+    //Дебажный вывод лога
     std::ofstream f;
-    f.open("/home/user/file.txt", std::ios_base::out | std::ios_base::trunc);
+    f.open("/home/user/log.txt", std::ios_base::out | std::ios_base::trunc);
     f << "TIME\txl\tyl\tzl\txr\tyr\tzr\tcan_step\n";
-    //f.close();
 
     //Цикл приема запросов
     while (isReceive)
@@ -116,24 +115,15 @@ void receiveFunc(int port, int maxBufferSize)
         //Отправка запросов
         if(buffer[6]==1)
         {
-            std::cout<<"1111111111111111111111111111111111111111111111111111111111111111111\n";
-            fakeCnt++;
-
             //stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
             //stepsMediator->ReadResponse(buffer, maxBufferSize);
-        }
-
-        if(fakeCnt>=10)
-        {
-            buffer[6]=10;
-            fakeCnt=0;
         }
 
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
-            f<<counter*0.05<<"\t";
-            for(int i = 0; i<7; i++)
+            f<<getSeconds()<<"\t";
+            for(int i = 0; i<sendSize; i++)
             {
                 std::cout<<buffer[i]<<"\t";
                 f<<buffer[i]<<"\t";
@@ -149,8 +139,6 @@ void receiveFunc(int port, int maxBufferSize)
 
 
         f.flush();
-        counter++;
-
     }
 }
 
@@ -174,4 +162,12 @@ int receive(int socket, double* buffer, int maxBufferSize, sockaddr_in* si_frund
     }
 
    return recvSize / sizeof(double);
+}
+
+
+//Возвращает время от начала программы
+double getSeconds()
+{
+    duration<double> time_span = duration_cast<duration<double>>(steady_clock::now() - start);
+    return time_span.count();
 }
