@@ -17,7 +17,7 @@
 #include <thread>
 #include <fstream>
 #include <chrono>
-
+#include <tf/transform_listener.h>
 
 #include "NodeMediator/NodeMediatorBase.h"
 #include "NodeMediator/StepsMediator/StepsMediator.h"
@@ -35,9 +35,7 @@ void receiveFunc(int port, int maxBufferSize);
 int receive(int socket, double* buffer, int maxBufferSize, sockaddr_in* si_frund);
 double getSeconds();
 
-//float fakeTime = 0;
-//int fakeCnt = 0;
-
+float fakeTime = 0;
 
 int main(int argc, char ** argv)
 {
@@ -47,6 +45,7 @@ int main(int argc, char ** argv)
     stepsMediator = new StepsMediator(nh);
 
     ROS_INFO("Receiver node started...");
+
     start = steady_clock::now();
 
     isReceive = true;
@@ -92,6 +91,7 @@ void receiveFunc(int port, int maxBufferSize)
 
     //Дебажный вывод лога
     std::ofstream f;
+
     f.open("/home/user/log.txt", std::ios_base::out | std::ios_base::trunc);
     f << "TIME\txl\tyl\tzl\txr\tyr\tzr\tcan_step\n";
 
@@ -115,18 +115,43 @@ void receiveFunc(int port, int maxBufferSize)
         //Отправка запросов
         if(buffer[6]==1)
         {
-            //stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-            //stepsMediator->ReadResponse(buffer, maxBufferSize);
+            stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+            stepsMediator->ReadResponse(buffer, maxBufferSize);
         }
+
+        tf::TransformListener listener;
+        tf::StampedTransform transform;
+        try
+        {
+            listener.waitForTransform("/odom", "/camera_link", ros::Time(0), ros::Duration(3));
+            listener.lookupTransform("/odom", "/camera_link", ros::Time(0), transform);
+        }
+        catch (tf::TransformException ex)
+        {
+            ROS_ERROR("%s",ex.what());
+        }
+
+        /*tf::Vector3 position = transform.getOrigin();
+        tf::Quaternion q = transform.getRotation();
+        q.normalize();
+
+        buffer[0] = position.x();
+        buffer[1] = position.y();
+        buffer[2] = position.z();
+
+        // Get angle
+        tf::Matrix3x3 m(q);
+        m.getRPY(buffer[3], buffer[4], buffer[5]);*/
+
 
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
-            f<<getSeconds()<<"\t";
+            f<<fakeTime*0.005<<"  ";
             for(int i = 0; i<sendSize; i++)
             {
                 std::cout<<buffer[i]<<"\t";
-                f<<buffer[i]<<"\t";
+                f<<buffer[i]<<"  ";
             }
 
             std::cout<<"\n";
@@ -139,6 +164,7 @@ void receiveFunc(int port, int maxBufferSize)
 
 
         f.flush();
+        fakeTime++;
     }
 }
 

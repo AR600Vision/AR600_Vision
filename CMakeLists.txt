@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
         sensor_msgs             # не подключается
         message_generation      # не подключается
+        tf
         )
 
 include_directories(
