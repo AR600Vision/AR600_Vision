@@ -42,6 +42,63 @@ int receive(int socket, double* buffer, int maxBufferSize, sockaddr_in* si_frund
 int counter = 0;
 int fakeCnt = 0;
 
+void TestTransform()
+{
+    counter = 0;
+    double buffer[8];
+
+    std::ofstream f;
+    f.open("/home/aleksey/Downloads/my.txt", std::ios_base::out | std::ios_base::trunc);
+    f << "TIME  xl  yl  zl  xr  yr  zr  can_step\n";
+    tf::TransformListener listener;
+    tf::StampedTransform transform;
+
+    while (ros::ok())
+    {
+        try
+        {
+            listener.waitForTransform("/odom", "/camera_link", ros::Time(0), ros::Duration(3));
+            listener.lookupTransform("/odom", "/camera_link", ros::Time(0), transform);
+        }
+        catch (tf::TransformException ex)
+        {
+            ROS_ERROR("%s",ex.what());
+            continue;
+        }
+
+        tf::Vector3 position = transform.getOrigin();
+        tf::Quaternion q = transform.getRotation();
+        q.normalize(); // fixme At first we don't normalized quaternion.
+        // fixme At second, Quaternion is child class of QuadWord, which has methods x, y, z, w
+        buffer[0] = position.x();
+        buffer[1] = position.y();
+        buffer[2] = position.z();
+        /*buffer[3] = q.x();
+        buffer[4] = q.y();
+        buffer[5] = q.z();
+        buffer[6] = q.w();*/
+
+        // Get angle
+        tf::Matrix3x3 m(q);
+        m.getRPY(buffer[3], buffer[4], buffer[5]);
+
+
+        f<<counter *  0.005<<"  ";
+        for(int i = 0; i<7; i++)
+        {
+            std::cout<<buffer[i]<<"\t";
+            f<<buffer[i]<<"  ";
+        }
+        std::cout << '\n';
+        f<<"\n";
+        counter++;
+
+        usleep(100000);
+    }
+
+    f.close();
+}
+
 
 int main(int argc, char ** argv)
 {
@@ -52,6 +109,7 @@ int main(int argc, char ** argv)
 
     ROS_INFO("Receiver node started...");
 
+    TestTransform();
 
     isReceive = true;
     std::thread listenThread(receiveFunc, 12833, 10);
@@ -119,19 +177,9 @@ void receiveFunc(int port, int maxBufferSize)
         //Отправка запросов
         /*if(buffer[6]==1)
         {
-            std::cout<<"1111111111111111111111111111111111111111111111111111111111111111111\n";
-            fakeCnt++;
-
             //stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
             //stepsMediator->ReadResponse(buffer, maxBufferSize);
-        }
-
-        if(fakeCnt>=10)
-        {
-            buffer[6]=10;
-            fakeCnt=0;
         }*/
-
 
         tf::TransformListener listener;
         tf::StampedTransform transform;
@@ -152,23 +200,22 @@ void receiveFunc(int port, int maxBufferSize)
         buffer[0] = position.x();
         buffer[1] = position.y();
         buffer[2] = position.z();
-        buffer[3] = q.x();
+        /*buffer[3] = q.x();
         buffer[4] = q.y();
         buffer[5] = q.z();
-        buffer[6] = q.w();
+        buffer[6] = q.w();*/
 
         // Get angle
         tf::Matrix3x3 m(q);
-        double row, pitch, yaw;
-        m.getRPY(row, pitch, yaw);
+        m.getRPY(buffer[3], buffer[4], buffer[5]);
+
 
         // Test send
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
             f<<counter *  0.005<<"  ";
-            f<<omp_get_wtime()<<"  ";
-            for(int i = 1; i<7; i++)
+            for(int i = 0; i<7; i++)
             {
                 std::cout<<buffer[i]<<"\t";
                 f<<buffer[i]<<"  ";
