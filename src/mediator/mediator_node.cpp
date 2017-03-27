@@ -63,7 +63,7 @@ void receiveFunc(int port, int maxBufferSize)
     sockaddr_in si_me;
 
     //Количество отсылаемых элементов
-    int sendSize = 6 + 1 + 1; //wtf???
+    int sendSize = 6 + 1; //wtf???
 
     /// Create socket
     int sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -116,7 +116,7 @@ void receiveFunc(int port, int maxBufferSize)
         if(buffer[6]==1)
         {
             stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-            stepsMediator->ReadResponse(buffer, maxBufferSize);
+            bool isDone = stepsMediator->ReadResponse(buffer);
         }
 
         tf::TransformListener listener;
@@ -130,18 +130,6 @@ void receiveFunc(int port, int maxBufferSize)
         {
             ROS_ERROR("%s",ex.what());
         }
-
-        /*tf::Vector3 position = transform.getOrigin();
-        tf::Quaternion q = transform.getRotation();
-        q.normalize();
-
-        buffer[0] = position.x();
-        buffer[1] = position.y();
-        buffer[2] = position.z();
-
-        // Get angle
-        tf::Matrix3x3 m(q);
-        m.getRPY(buffer[3], buffer[4], buffer[5]);*/
 
 
         socklen_t slen_res = sizeof(si_frund);
@@ -197,3 +185,16 @@ double getSeconds()
     duration<double> time_span = duration_cast<duration<double>>(steady_clock::now() - start);
     return time_span.count();
 }
+
+
+/*tf::Vector3 position = transform.getOrigin();
+tf::Quaternion q = transform.getRotation();
+q.normalize();
+
+buffer[0] = position.x();
+buffer[1] = position.y();
+buffer[2] = position.z();
+
+// Get angle
+tf::Matrix3x3 m(q);
+m.getRPY(buffer[3], buffer[4], buffer[5]);*/

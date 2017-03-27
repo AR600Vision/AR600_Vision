@@ -22,28 +22,12 @@ NodeMediatorBase::~NodeMediatorBase()
 }
 
 //Чтение результата
-int NodeMediatorBase::ReadResponse(double* buffer, int maxCount)
+bool NodeMediatorBase::ReadResponse(double* buffer)
 {
     std::lock_guard<std::mutex> l(Mutex);
 
-    if(BufferMaxSize + 1 > maxCount)
-    {
-        ROS_ERROR("Buffer is too small to copy response");
-        return -1;
-    }
-
     //Копируем данные
-    if(buffer!=nullptr)
-    {
-        memcpy(buffer, SendBuffer, sizeof(double) * BufferMaxSize);
-        buffer[BufferMaxSize] = isDone;
-    }
+    memcpy(buffer, SendBuffer, sizeof(double) * BufferMaxSize);
 
-    return BufferMaxSize + 1;
-}
-
-//Завершен ли расчет
-bool NodeMediatorBase::IsDone()
-{
     return isDone;
 }
