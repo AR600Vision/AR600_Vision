@@ -14,8 +14,6 @@ target_link_libraries(mediator_node  ${catkin_LIBRARIES})
 
 target_compile_options(mediator_node PRIVATE -std=c++11)
 
-#SET ( CMAKE_CXX_FLAGS "-std=c++11" )
-
 add_executable(sockettest src/mediator/sockettest.cpp)
 
 target_compile_options(sockettest PRIVATE -std=c++11 -fopenmp)

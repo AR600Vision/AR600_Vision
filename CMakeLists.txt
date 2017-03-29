@@ -21,7 +21,7 @@ include_directories(
 # Ноды
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
-
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/obstacle_detector/CMakeLists.txt)
 
 # Declare a catkin package
 catkin_package()

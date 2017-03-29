@@ -119,17 +119,7 @@ void receiveFunc(int port, int maxBufferSize)
             bool isDone = stepsMediator->ReadResponse(buffer);
         }
 
-        tf::TransformListener listener;
-        tf::StampedTransform transform;
-        try
-        {
-            listener.waitForTransform("/odom", "/camera_link", ros::Time(0), ros::Duration(3));
-            listener.lookupTransform("/odom", "/camera_link", ros::Time(0), transform);
-        }
-        catch (tf::TransformException ex)
-        {
-            ROS_ERROR("%s",ex.what());
-        }
+
 
 
         socklen_t slen_res = sizeof(si_frund);
@@ -148,8 +138,6 @@ void receiveFunc(int port, int maxBufferSize)
         }
         else
             ROS_ERROR("Error sending response. Error code: %d", errno);
-
-
 
         f.flush();
         fakeTime++;
@@ -187,7 +175,22 @@ double getSeconds()
 }
 
 
-/*tf::Vector3 position = transform.getOrigin();
+/*
+ *
+tf::TransformListener listener;
+tf::StampedTransform transform;
+try
+{
+    listener.waitForTransform("/odom", "/camera_link", ros::Time(0), ros::Duration(3));
+    listener.lookupTransform("/odom", "/camera_link", ros::Time(0), transform);
+}
+catch (tf::TransformException ex)
+{
+    ROS_ERROR("%s",ex.what());
+}
+
+
+ tf::Vector3 position = transform.getOrigin();
 tf::Quaternion q = transform.getRotation();
 q.normalize();
 
