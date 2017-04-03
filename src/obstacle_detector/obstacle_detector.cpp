@@ -18,17 +18,30 @@
 
 #include "SimpleDraw/SimpleDraw.h"
 
-
 using namespace std;
 using namespace std::chrono;
+using namespace Eigen;
+
+struct PathCoord
+{
+    Vector2f a, b, c, d, e, f;
+};
 
 const char response_topic[] = "obstacle_detector/obstacle";
 
 SimpleDraw g(500, 500);
 int cellToPixel = 4;
 
-void DrawCell(int x, int y, Color color);
 void process(ros::ServiceClient rtabmap_client);
+
+PathCoord GetPath( tf::StampedTransform transform, Vector2f robotPos, int length, int width);
+
+
+void DrawMap(nav_msgs::OccupancyGrid map);
+void DrawLine(Vector2f a, Vector2f b, Color c);
+void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2);
+void DrawCell(int x, int y, Color color);
+
 
 int main(int argc, char** argv)
 {
@@ -84,6 +97,34 @@ void process(ros::ServiceClient rtabmap_client)
         return;
     }
 
+    nav_msgs::OccupancyGrid map = proj_map_srv.response.map;
+    float resolution = map.info.resolution;
+    geometry_msgs::Pose origin = map.info.origin;
+
+    DrawMap(map);
+
+    int width = 1 / resolution;
+    int length = 2 / resolution;
+
+    Vector2f a;
+    a << (transform.getOrigin().x() - origin.position.x) / resolution,
+         (transform.getOrigin().y() - origin.position.y) / resolution;
+
+    auto path = GetPath(transform, a, length, width);
+
+    Color r(255, 0, 0);
+
+    DrawLine(path.c, path.d, r);
+    DrawLine(path.c, path.e, r);
+    DrawLine(path.e, path.d, r);
+
+
+    DrawLine(path.d, path.f, r);
+    DrawLine(path.e, path.f, r);
+}
+
+PathCoord GetPath( tf::StampedTransform transform, Vector2f a, int length, int width)
+{
 
     tf::Vector3 position = transform.getOrigin();
     tf::Quaternion q = transform.getRotation();
@@ -93,27 +134,122 @@ void process(ros::ServiceClient rtabmap_client)
     tf::Matrix3x3 m(q);
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
-    ROS_INFO("COORD: %lf %lf %lf", position.x(), position.y(), position.z());
 
-    auto map = proj_map_srv.response.map;
-    float resolution = map.info.resolution;
-    uint32_t width = map.info.width;
-    uint32_t height = map.info.height;
-    geometry_msgs::Pose origin = map.info.origin;
+    //Положение робота (A)
 
-    /*
-     * -1 - неизвестно
-     *  0 - нет
-     *  100 - препятствие
-     */
-    vector<int8_t> data = map.data;
 
-    //Рисуем карту
-    for(int y = 0; y<height; y++)
+    //Положение цели (B)
+    Vector2f b;
+    b << a(0) + length*cos(yaw),
+            a(1) + length*sin(yaw);
+
+    //Вектор AB
+    Vector2f ab = b - a;
+    float v_l = sqrt(ab(0)*ab(0) + ab(1)*ab(1));
+
+    //C
+    Vector2f c;
+    c << a(0) + ab(1) / v_l * width/2,
+            a(1) - ab(0) / v_l * width/2;
+
+    //D
+    Vector2f d;
+    d << a(0) - ab(1) / v_l * width/2,
+            a(1) + ab(0) / v_l * width/2;
+
+    //E
+    Vector2f e = c + ab;
+
+    //F
+    Vector2f f = d + ab;
+
+    //A
+    /*DrawCell(a(0), a(1), Color(255,0,0));
+
+    //AB
+    g.DrawLine(Color(255,0,0), a(0)*cellToPixel, a(1)*cellToPixel, b(0)*cellToPixel, b(1)*cellToPixel);
+
+    //AC
+    g.DrawLine(Color(255,0,0), a(0)*cellToPixel, a(1)*cellToPixel, c(0)*cellToPixel, c(1)*cellToPixel);
+
+    //AD
+    g.DrawLine(Color(255,0,0), a(0)*cellToPixel, a(1)*cellToPixel, d(0)*cellToPixel, d(1)*cellToPixel);
+
+    //CE
+    g.DrawLine(Color(255,0,0), c(0)*cellToPixel, c(1)*cellToPixel, e(0)*cellToPixel, e(1)*cellToPixel);
+
+    //DF
+    g.DrawLine(Color(255,0,0), d(0)*cellToPixel, d(1)*cellToPixel, f(0)*cellToPixel, f(1)*cellToPixel);
+
+    //EF
+    g.DrawLine(Color(255,0,0), e(0)*cellToPixel, e(1)*cellToPixel, f(0)*cellToPixel, f(1)*cellToPixel);*/
+
+
+    return PathCoord {a, b, c, d, e, f};
+}
+
+//Линия алгоритмом Брезенхэма
+void DrawLine(Vector2f a, Vector2f b, Color c)
+{
+    int x0 = a(0), y0 = a(1);
+    int x1 = b(0), y1 = b(1);
+
+    //https://habrahabr.ru/post/248153/
+    bool steep = false;
+    if (std::abs(x0-x1)<std::abs(y0-y1))
     {
-        for(int x = 0; x<width; x++)
+        std::swap(x0, y0);
+        std::swap(x1, y1);
+        steep = true;
+    }
+    if (x0>x1)
+    {
+        std::swap(x0, x1);
+        std::swap(y0, y1);
+    }
+
+    int dx = x1-x0;
+    int dy = y1-y0;
+    int derror2 = std::abs(dy)*2;
+    int error2 = 0;
+    int y = y0;
+
+    for (int x=x0; x<=x1; x++)
+    {
+        if (steep)
         {
-            int8_t cell = data[y * width + x];
+            //image.set(y, x, color);
+            DrawCell(y, x, c);
+
+        }
+        else
+        {
+            //image.set(x, y, color);
+            DrawCell(x, y, c);
+        }
+
+        error2 += derror2;
+
+        if (error2 > dx)
+        {
+            y += (y1>y0?1:-1);
+            error2 -= dx*2;
+        }
+    }
+}
+
+void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2)
+{
+
+}
+
+void DrawMap(nav_msgs::OccupancyGrid map)
+{
+    for(int y = 0; y<map.info.height; y++)
+    {
+        for(int x = 0; x<map.info.width; x++)
+        {
+            int8_t cell = map.data[y * map.info.width + x];
 
             if(cell==0)
                 DrawCell(x,y,Color::White());
@@ -124,18 +260,6 @@ void process(ros::ServiceClient rtabmap_client)
 
         }
     }
-
-    //Рисуем положение робота
-    int x_pos = (position.x() - origin.position.x) / resolution;
-    int y_pos = (position.y() - origin.position.y) / resolution;
-
-    DrawCell(x_pos, y_pos, Color(255,0,0));
-
-    //Рисуем направление
-    int x_t = x_pos + 50.0*cos(yaw);
-    int y_t = y_pos + 50.0*sin(yaw);
-
-    g.DrawLine(Color(255,0,0), x_pos*cellToPixel, y_pos*cellToPixel, x_t*cellToPixel, y_t*cellToPixel);
 }
 
 void DrawCell(int x, int y, Color color)
