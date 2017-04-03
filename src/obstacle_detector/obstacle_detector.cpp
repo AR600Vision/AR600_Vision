@@ -39,7 +39,7 @@ PathCoord GetPath( tf::StampedTransform transform, Vector2f robotPos, int length
 
 void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawLine(Vector2f a, Vector2f b, Color c);
-void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2);
+void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2, Color c);
 void DrawCell(int x, int y, Color color);
 
 
@@ -114,13 +114,16 @@ void process(ros::ServiceClient rtabmap_client)
 
     Color r(255, 0, 0);
 
-    DrawLine(path.c, path.d, r);
+    /*DrawLine(path.c, path.d, r);
     DrawLine(path.c, path.e, r);
     DrawLine(path.e, path.d, r);
 
 
     DrawLine(path.d, path.f, r);
-    DrawLine(path.e, path.f, r);
+    DrawLine(path.e, path.f, r);*/
+
+    DrawTriangle(path.c, path.d, path.e, r);
+    DrawTriangle(path.d, path.e, path.f, r);
 }
 
 PathCoord GetPath( tf::StampedTransform transform, Vector2f a, int length, int width)
@@ -238,9 +241,36 @@ void DrawLine(Vector2f a, Vector2f b, Color c)
     }
 }
 
-void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2)
+void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2, Color c)
 {
+    if (t0(1)==t1(1) && t0(1)==t2(1)) return; // i dont care about degenerate triangles
 
+    // sort the vertices, t0, t1, t2 lower-to-upper (bubblesort yay!)
+    if (t0(1)>t1(1)) std::swap(t0, t1);
+    if (t0(1)>t2(1)) std::swap(t0, t2);
+    if (t1(1)>t2(1)) std::swap(t1, t2);
+
+    int total_height = t2(1)-t0(1);
+
+    for (int i=0; i<total_height; i++)
+    {
+        bool second_half = i > t1(1) - t0(1) || t1(1) == t0(1);
+        int segment_height = second_half ? t2(1)-t1(1) : t1(1) - t0(1);
+
+        float alpha = (float)i/total_height;
+        float beta  = (float)(i-(second_half ? t1(1)-t0(1) : 0))/segment_height; // be careful: with above conditions no division by zero here
+
+        Vector2f A = t0 + (t2-t0)*alpha;
+        Vector2f B = second_half ? t1 + (t2-t1)*beta : t0 + (t1-t0)*beta;
+
+        if (A(0)>B(0)) std::swap(A, B);
+
+        for (int j=A(0); j<=B(0); j++)
+        {
+            //image.set(j, t0(1)+i, color); // attention, due to int casts t0.y+i != A.y
+            DrawCell(j, t0(1)+i, c);
+        }
+    }
 }
 
 void DrawMap(nav_msgs::OccupancyGrid map)
