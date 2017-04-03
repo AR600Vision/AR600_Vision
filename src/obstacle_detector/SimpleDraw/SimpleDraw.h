@@ -8,6 +8,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 
+#include <thread>
+
 struct Color
 {
 public:
@@ -46,13 +48,21 @@ public:
     void SetColor(Color color);
     void Update();
 
+    //Задержка
     void Delay(int millis);
+
+    //Нужно вызывать, чтобы окно не висло
+    bool Tick();
 private:
 
 
+    std::thread draw_thread;
+    bool _isDraw;
 
     SDL_Window *win;
     SDL_Renderer *ren;
+
+    void draw();
 };
 
 

@@ -4,7 +4,7 @@
 
 #include "SimpleDraw.h"
 
-SimpleDraw::SimpleDraw(int width, int height)
+SimpleDraw::SimpleDraw(int width, int height) : draw_thread(&SimpleDraw::draw_thread, this)
 {
     SDL_Init(SDL_INIT_VIDEO);
     win = SDL_CreateWindow("Obstacle detection", 100, 100, 500, 500, SDL_WINDOW_SHOWN);
@@ -47,6 +47,9 @@ void SimpleDraw::FillRect(Color color, int x, int y, int width, int height)
     rect.w = width;
     rect.h = height;
     SDL_RenderFillRect(ren, &rect);
+
+    //_isDraw = true;
+    //draw_thread.detach();
 }
 
 void SimpleDraw::DrawEllipse(Color color, int x, int y, int width, int height)
@@ -60,11 +63,6 @@ void SimpleDraw::FillEllipse(Color color, int x, int y, int width, int height)
 }
 
 
-void SimpleDraw::Delay(int millis)
-{
-    SDL_Delay(millis);
-}
-
 void SimpleDraw::SetColor(Color color)
 {
     SDL_SetRenderDrawColor(ren, color.R, color.G, color.B, 255);
@@ -75,5 +73,40 @@ void SimpleDraw::Update()
 {
     SDL_RenderPresent(ren);
 }
+
+
+//Задержка
+void SimpleDraw::Delay(int millis)
+{
+    SDL_Delay(millis);
+}
+
+
+//Нужно вызывать, чтобы окно не висло
+bool SimpleDraw::Tick()
+{
+    Update();
+
+    SDL_Event event;
+    while(SDL_PollEvent(&event))
+    {
+        if(event.type == SDL_QUIT)
+            return true;
+    }
+}
+
+
+
+
+
+
+void SimpleDraw::draw()
+{
+    while(_isDraw)
+    {
+
+    }
+}
+
 
 
