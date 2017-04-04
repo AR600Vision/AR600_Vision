@@ -22,8 +22,20 @@ using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
 
-struct PathCoord
+struct SearchAreaCoords
 {
+    /*
+         (target)
+     E ---- B ---- F
+     |             |
+     |             |
+     |             |
+     |             |
+     |             |
+     C ---- A ---- D
+         (robot)
+     */
+
     Vector2f a, b, c, d, e, f;
 };
 
@@ -34,32 +46,54 @@ int cellToPixel = 4;
 
 void process(ros::ServiceClient rtabmap_client);
 
-PathCoord GetPath( tf::StampedTransform transform, Vector2f robotPos, int length, int width);
+SearchAreaCoords GetSearchArea(float yaw, Vector2f robotPos, int length, int width);
 
+void SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map);
+void SearchInTriangle(Vector2f t0, Vector2f t1, Vector2f t2, nav_msgs::OccupancyGrid map, Color c);
 
-void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawLine(Vector2f a, Vector2f b, Color c);
-void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2, Color c);
+void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawCell(int x, int y, Color color);
 
+Vector2f v2(int x, int y)
+{
+    Vector2f v;
+    v << x, y;
+    return v;
+}
 
 int main(int argc, char** argv)
 {
 
     //Инициализация ноды ROS
-    ros::init(argc, argv, "ObstacleDetector");
+    /*ros::init(argc, argv, "ObstacleDetector");
     ros::NodeHandle n;
     ros::Rate rate(0.5);
 
     //ros::Publisher responsePublisher = n.advertise<>(response_topic, 1, true);
     ros::ServiceClient rtabmap_client = n.serviceClient<nav_msgs::GetMap>("/rtabmap/get_proj_map");
 
-    ROS_INFO("%s", "AR-600/obstacle_detector started");
+    ROS_INFO("%s", "AR-600/obstacle_detector started");*/
 
     g.Clear(Color::White());
-    g.Update();
+    //g.Update();
 
-    while (ros::ok())
+    nav_msgs::OccupancyGrid map;
+    Vector2f pos = v2(40, 40);
+
+    float yaw = 0;
+
+    while(true){
+        g.Clear(Color::White());
+        auto area = GetSearchArea(yaw, pos, 40, 20);
+        SearchInArea(area, map);
+        SearchInArea(area, map);
+        yaw+=0.1;
+        g.Delay(100);
+        g.Tick();
+    }
+
+    /*while (ros::ok())
     {
         process(rtabmap_client);
 
@@ -67,7 +101,7 @@ int main(int argc, char** argv)
             return 0;
 
         rate.sleep();
-    }
+    }*/
 
     return 0;
 }
@@ -106,30 +140,8 @@ void process(ros::ServiceClient rtabmap_client)
     int width = 1 / resolution;
     int length = 2 / resolution;
 
-    Vector2f a;
-    a << (transform.getOrigin().x() - origin.position.x) / resolution,
-         (transform.getOrigin().y() - origin.position.y) / resolution;
 
-    auto path = GetPath(transform, a, length, width);
-
-    Color r(255, 0, 0);
-
-    /*DrawLine(path.c, path.d, r);
-    DrawLine(path.c, path.e, r);
-    DrawLine(path.e, path.d, r);
-
-
-    DrawLine(path.d, path.f, r);
-    DrawLine(path.e, path.f, r);*/
-
-    DrawTriangle(path.c, path.d, path.e, r);
-    DrawTriangle(path.d, path.e, path.f, r);
-}
-
-PathCoord GetPath( tf::StampedTransform transform, Vector2f a, int length, int width)
-{
-
-    tf::Vector3 position = transform.getOrigin();
+    //Получение угла поворота и координат
     tf::Quaternion q = transform.getRotation();
     q.normalize();
 
@@ -138,66 +150,105 @@ PathCoord GetPath( tf::StampedTransform transform, Vector2f a, int length, int w
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
 
-    //Положение робота (A)
+    Vector2f a;
+    a << (transform.getOrigin().x() - origin.position.x) / resolution,
+         (transform.getOrigin().y() - origin.position.y) / resolution;
 
+    auto area = GetSearchArea(yaw, a, length, width);
+
+    SearchInArea(area, map);
+}
+
+//Возвращет координаты вершин области, в которой надо искать препятствия
+SearchAreaCoords GetSearchArea(float yaw, Vector2f a, int length, int width)
+{
 
     //Положение цели (B)
     Vector2f b;
     b << a(0) + length*cos(yaw),
             a(1) + length*sin(yaw);
 
-    //Вектор AB
     Vector2f ab = b - a;
     float v_l = sqrt(ab(0)*ab(0) + ab(1)*ab(1));
 
-    //C
     Vector2f c;
     c << a(0) + ab(1) / v_l * width/2,
             a(1) - ab(0) / v_l * width/2;
 
-    //D
     Vector2f d;
     d << a(0) - ab(1) / v_l * width/2,
             a(1) + ab(0) / v_l * width/2;
 
-    //E
     Vector2f e = c + ab;
 
-    //F
     Vector2f f = d + ab;
 
-    //A
-    /*DrawCell(a(0), a(1), Color(255,0,0));
-
-    //AB
-    g.DrawLine(Color(255,0,0), a(0)*cellToPixel, a(1)*cellToPixel, b(0)*cellToPixel, b(1)*cellToPixel);
-
-    //AC
-    g.DrawLine(Color(255,0,0), a(0)*cellToPixel, a(1)*cellToPixel, c(0)*cellToPixel, c(1)*cellToPixel);
-
-    //AD
-    g.DrawLine(Color(255,0,0), a(0)*cellToPixel, a(1)*cellToPixel, d(0)*cellToPixel, d(1)*cellToPixel);
-
-    //CE
-    g.DrawLine(Color(255,0,0), c(0)*cellToPixel, c(1)*cellToPixel, e(0)*cellToPixel, e(1)*cellToPixel);
-
-    //DF
-    g.DrawLine(Color(255,0,0), d(0)*cellToPixel, d(1)*cellToPixel, f(0)*cellToPixel, f(1)*cellToPixel);
-
-    //EF
-    g.DrawLine(Color(255,0,0), e(0)*cellToPixel, e(1)*cellToPixel, f(0)*cellToPixel, f(1)*cellToPixel);*/
+    return SearchAreaCoords {a, b, c, d, e, f};
+}
 
 
-    return PathCoord {a, b, c, d, e, f};
+void SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map)
+{
+    //SearchInTriangle(area.c, area.d, area.e, map, Color(255,0,0));
+    //SearchInTriangle(area.d, area.e, area.f, map, Color(0,255,0));
+
+    Color r(255,0,0);
+    Color g(0,255,0);
+
+    SearchInTriangle(area.c, area.d, area.e, map, g);
+
+    DrawLine(area.c, area.d, r);
+    DrawLine(area.d, area.e, r);
+    DrawLine(area.e, area.c, r);
+
+    //DrawLine(area.e, area.f, g);
+    //D/rawLine(area.f, area.d, g);
+    //DrawLine(area.d, area.e, g);
+}
+
+//Ищет препятствие в треугольнике (одновременно раскрашивает)
+//https://habrahabr.ru/post/248159/
+void SearchInTriangle(Vector2f t0, Vector2f t1, Vector2f t2, nav_msgs::OccupancyGrid map, Color c )
+{
+    //Color c(255,0,0);;
+
+    if (t0(1)==t1(1) && t0(1)==t2(1)) return; // i dont care about degenerate triangles
+
+    // sort the vertices, t0, t1, t2 lower-to-upper (bubblesort yay!)
+    if (t0(1)>t1(1)) std::swap(t0, t1);
+    if (t0(1)>t2(1)) std::swap(t0, t2);
+    if (t1(1)>t2(1)) std::swap(t1, t2);
+
+    int total_height = t2(1)-t0(1);
+
+    for (int i=0; i<total_height; i++)
+    {
+        bool second_half = i > t1(1) - t0(1) || t1(1) == t0(1);
+        int segment_height = second_half ? t2(1)-t1(1) : t1(1) - t0(1);
+
+        float alpha = (float)i/total_height;
+        float beta  = (float)(i-(second_half ? t1(1)-t0(1) : 0))/segment_height; // be careful: with above conditions no division by zero here
+
+        Vector2f A = t0 + (t2-t0)*alpha;
+        Vector2f B = second_half ? t1 + (t2-t1)*beta : t0 + (t1-t0)*beta;
+
+        if (A(0)>B(0)) std::swap(A, B);
+
+        for (int j=A(0); j<=B(0); j++)
+        {
+            //image.set(j, t0(1)+i, color); // attention, due to int casts t0.y+i != A.y
+            DrawCell(j, t0(1)+i, c);
+        }
+    }
 }
 
 //Линия алгоритмом Брезенхэма
+//https://habrahabr.ru/post/248153/
 void DrawLine(Vector2f a, Vector2f b, Color c)
 {
     int x0 = a(0), y0 = a(1);
     int x1 = b(0), y1 = b(1);
 
-    //https://habrahabr.ru/post/248153/
     bool steep = false;
     if (std::abs(x0-x1)<std::abs(y0-y1))
     {
@@ -241,38 +292,8 @@ void DrawLine(Vector2f a, Vector2f b, Color c)
     }
 }
 
-void DrawTriangle(Vector2f t0, Vector2f t1, Vector2f t2, Color c)
-{
-    if (t0(1)==t1(1) && t0(1)==t2(1)) return; // i dont care about degenerate triangles
 
-    // sort the vertices, t0, t1, t2 lower-to-upper (bubblesort yay!)
-    if (t0(1)>t1(1)) std::swap(t0, t1);
-    if (t0(1)>t2(1)) std::swap(t0, t2);
-    if (t1(1)>t2(1)) std::swap(t1, t2);
-
-    int total_height = t2(1)-t0(1);
-
-    for (int i=0; i<total_height; i++)
-    {
-        bool second_half = i > t1(1) - t0(1) || t1(1) == t0(1);
-        int segment_height = second_half ? t2(1)-t1(1) : t1(1) - t0(1);
-
-        float alpha = (float)i/total_height;
-        float beta  = (float)(i-(second_half ? t1(1)-t0(1) : 0))/segment_height; // be careful: with above conditions no division by zero here
-
-        Vector2f A = t0 + (t2-t0)*alpha;
-        Vector2f B = second_half ? t1 + (t2-t1)*beta : t0 + (t1-t0)*beta;
-
-        if (A(0)>B(0)) std::swap(A, B);
-
-        for (int j=A(0); j<=B(0); j++)
-        {
-            //image.set(j, t0(1)+i, color); // attention, due to int casts t0.y+i != A.y
-            DrawCell(j, t0(1)+i, c);
-        }
-    }
-}
-
+//Рисует карту
 void DrawMap(nav_msgs::OccupancyGrid map)
 {
     for(int y = 0; y<map.info.height; y++)
@@ -292,6 +313,7 @@ void DrawMap(nav_msgs::OccupancyGrid map)
     }
 }
 
+//Рисует "пиксель" на карте
 void DrawCell(int x, int y, Color color)
 {
     int size = cellToPixel;
