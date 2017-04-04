@@ -36,7 +36,7 @@ struct SearchAreaCoords
          (robot)
      */
 
-    Vector2f a, b, c, d, e, f;
+    Vector2i a, b, c, d, e, f;
 };
 
 const char response_topic[] = "obstacle_detector/obstacle";
@@ -46,18 +46,19 @@ int cellToPixel = 4;
 
 void process(ros::ServiceClient rtabmap_client);
 
-SearchAreaCoords GetSearchArea(float yaw, Vector2f robotPos, int length, int width);
+SearchAreaCoords GetSearchArea(float yaw, Vector2i robotPos, int length, int width);
 
-void SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map);
-void SearchInTriangle(Vector2f t0, Vector2f t1, Vector2f t2, nav_msgs::OccupancyGrid map, Color c);
+bool SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map);
+nool SearchInTriangle(Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map);
+bool CheckCell(int x, int y, nav_msgs::OccupancyGrid map);
 
-void DrawLine(Vector2f a, Vector2f b, Color c);
+void DrawLine(Vector2i a, Vector2i b, Color c);
 void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawCell(int x, int y, Color color);
 
-Vector2f v2(int x, int y)
+Vector2i v2(int x, int y)
 {
-    Vector2f v;
+    Vector2i v;
     v << x, y;
     return v;
 }
@@ -79,7 +80,7 @@ int main(int argc, char** argv)
     //g.Update();
 
     nav_msgs::OccupancyGrid map;
-    Vector2f pos = v2(40, 40);
+    Vector2i pos = v2(40, 40);
 
     float yaw = 0;
 
@@ -150,7 +151,7 @@ void process(ros::ServiceClient rtabmap_client)
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
 
-    Vector2f a;
+    Vector2i a;
     a << (transform.getOrigin().x() - origin.position.x) / resolution,
          (transform.getOrigin().y() - origin.position.y) / resolution;
 
@@ -160,91 +161,122 @@ void process(ros::ServiceClient rtabmap_client)
 }
 
 //Возвращет координаты вершин области, в которой надо искать препятствия
-SearchAreaCoords GetSearchArea(float yaw, Vector2f a, int length, int width)
+SearchAreaCoords GetSearchArea(float yaw, Vector2i a, int length, int width)
 {
 
     //Положение цели (B)
-    Vector2f b;
+    Vector2i b;
     b << a(0) + length*cos(yaw),
             a(1) + length*sin(yaw);
 
-    Vector2f ab = b - a;
+    Vector2i ab = b - a;
     float v_l = sqrt(ab(0)*ab(0) + ab(1)*ab(1));
 
-    Vector2f c;
+    Vector2i c;
     c << a(0) + ab(1) / v_l * width/2,
             a(1) - ab(0) / v_l * width/2;
 
-    Vector2f d;
+    Vector2i d;
     d << a(0) - ab(1) / v_l * width/2,
             a(1) + ab(0) / v_l * width/2;
 
-    Vector2f e = c + ab;
+    Vector2i e = c + ab;
 
-    Vector2f f = d + ab;
+    Vector2i f = d + ab;
 
     return SearchAreaCoords {a, b, c, d, e, f};
 }
 
 
-void SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map)
+//Ищет препятствия в прямогуольной области (одновременно раскрашивает)
+bool SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map)
 {
-    //SearchInTriangle(area.c, area.d, area.e, map, Color(255,0,0));
-    //SearchInTriangle(area.d, area.e, area.f, map, Color(0,255,0));
+    bool isEmpty = true;
 
-    Color r(255,0,0);
-    Color g(0,255,0);
+    isEmpty &= SearchInTriangle(area.c, area.d, area.e, map);
+    isEmpty &= SearchInTriangle(area.d, area.e, area.f, map);
 
-    SearchInTriangle(area.c, area.d, area.e, map, g);
-
-    DrawLine(area.c, area.d, r);
-    DrawLine(area.d, area.e, r);
-    DrawLine(area.e, area.c, r);
-
-    //DrawLine(area.e, area.f, g);
-    //D/rawLine(area.f, area.d, g);
-    //DrawLine(area.d, area.e, g);
+    return isEmpty;
 }
 
 //Ищет препятствие в треугольнике (одновременно раскрашивает)
 //https://habrahabr.ru/post/248159/
-void SearchInTriangle(Vector2f t0, Vector2f t1, Vector2f t2, nav_msgs::OccupancyGrid map, Color c )
+bool SearchInTriangle(Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map)
 {
-    //Color c(255,0,0);;
+    if(t0(1)>t1(1)) std::swap(t0, t1);
+    if(t0(1)>t2(1)) std::swap(t0, t2);
+    if(t1(1)>t2(1)) std::swap(t1, t2);
 
-    if (t0(1)==t1(1) && t0(1)==t2(1)) return; // i dont care about degenerate triangles
+    int t0t2_height = t2(1) - t0(1);
+    int t0t2_width = t2(0) - t0(0);
 
-    // sort the vertices, t0, t1, t2 lower-to-upper (bubblesort yay!)
-    if (t0(1)>t1(1)) std::swap(t0, t1);
-    if (t0(1)>t2(1)) std::swap(t0, t2);
-    if (t1(1)>t2(1)) std::swap(t1, t2);
+    int t0t1_height = t1(1) - t0(1);
+    int t0t1_width = t1(0) - t0(0);
 
-    int total_height = t2(1)-t0(1);
+    int t1t2_height = t2(1) - t1(1);
+    int t1t2_width = t2(0) - t1(0);
 
-    for (int i=0; i<total_height; i++)
+    //Можно потом сразу возвращать, если нашли препятствие,
+    //но сейчас пройдем все, чтобы визуализировть
+    bool isEmpty = true;
+
+    for (int y = t0(1); y < t2(1); y++)
     {
-        bool second_half = i > t1(1) - t0(1) || t1(1) == t0(1);
-        int segment_height = second_half ? t2(1)-t1(1) : t1(1) - t0(1);
+        float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
+        float t0t1_gain = (y - t0(1)) / (float)t0t1_height;
 
-        float alpha = (float)i/total_height;
-        float beta  = (float)(i-(second_half ? t1(1)-t0(1) : 0))/segment_height; // be careful: with above conditions no division by zero here
+        int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
+        int x_end = t0(0)+  t0t1_width * t0t1_gain + 0.5;
 
-        Vector2f A = t0 + (t2-t0)*alpha;
-        Vector2f B = second_half ? t1 + (t2-t1)*beta : t0 + (t1-t0)*beta;
+        if(x_start > x_end) std::swap(x_start, x_end);
 
-        if (A(0)>B(0)) std::swap(A, B);
+        for(int x = x_start; x<x_end; x++)
+            isEmpty &= CheckCell(x, y, map);
+    }
 
-        for (int j=A(0); j<=B(0); j++)
+    if(t1t2_height != 0)
+    {
+        for(int y = t1(1); y<t2(1); y++)
         {
-            //image.set(j, t0(1)+i, color); // attention, due to int casts t0.y+i != A.y
-            DrawCell(j, t0(1)+i, c);
+            float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
+            float t1t2_gain = (y - t1(1)) / (float)t1t2_height;
+
+            int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
+            int x_end = t1(0) + t1t2_width * t1t2_gain + 0.5;
+
+            if(x_start > x_end) std::swap(x_start, x_end);
+
+            for(int x = x_start; x<x_end; x++)
+                isEmpty &= CheckCell(x, y, map);
         }
+    }
+}
+
+//Проверяет наличие препятствия в клетке
+bool CheckCell(int x, int y, nav_msgs::OccupancyGrid map)
+{
+    int8_t cell = map.data[y * map.info.width + x];
+
+    if (cell == 0)
+    {
+        DrawCell(x, y, Color(0, 255, 0));
+        return true;
+    }
+    else if (cell == -1)
+    {
+        DrawCell(x, y, Color(255, 255, 0));
+        return true;
+    }
+    else
+    {
+        DrawCell(x, y, Color(255, 0, 0));
+        return false;
     }
 }
 
 //Линия алгоритмом Брезенхэма
 //https://habrahabr.ru/post/248153/
-void DrawLine(Vector2f a, Vector2f b, Color c)
+void DrawLine(Vector2i a, Vector2i b, Color c)
 {
     int x0 = a(0), y0 = a(1);
     int x1 = b(0), y1 = b(1);
