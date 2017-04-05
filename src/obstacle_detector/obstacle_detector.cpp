@@ -39,6 +39,18 @@ struct SearchAreaCoords
     Vector2i a, b, c, d, e, f;
 };
 
+//Препятствие
+struct Obstacle
+{
+    float Dist;
+    Vector2i Coord;
+
+    bool IsObstacle()
+    {
+        return !isinf(Dist);
+    }
+};
+
 const char response_topic[] = "obstacle_detector/obstacle";
 
 SimpleDraw g(500, 500);
@@ -48,8 +60,8 @@ void process(ros::ServiceClient rtabmap_client);
 
 SearchAreaCoords GetSearchArea(float yaw, Vector2i robotPos, int length, int width);
 
-bool SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map);
-nool SearchInTriangle(Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map);
+Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map);
+Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map);
 bool CheckCell(int x, int y, nav_msgs::OccupancyGrid map);
 
 void DrawLine(Vector2i a, Vector2i b, Color c);
@@ -67,19 +79,19 @@ int main(int argc, char** argv)
 {
 
     //Инициализация ноды ROS
-    /*ros::init(argc, argv, "ObstacleDetector");
+    ros::init(argc, argv, "ObstacleDetector");
     ros::NodeHandle n;
     ros::Rate rate(0.5);
 
     //ros::Publisher responsePublisher = n.advertise<>(response_topic, 1, true);
     ros::ServiceClient rtabmap_client = n.serviceClient<nav_msgs::GetMap>("/rtabmap/get_proj_map");
 
-    ROS_INFO("%s", "AR-600/obstacle_detector started");*/
+    ROS_INFO("%s", "AR-600/obstacle_detector started");
 
     g.Clear(Color::White());
-    //g.Update();
+    g.Update();
 
-    nav_msgs::OccupancyGrid map;
+    /*nav_msgs::OccupancyGrid map;
     Vector2i pos = v2(40, 40);
 
     float yaw = 0;
@@ -88,13 +100,12 @@ int main(int argc, char** argv)
         g.Clear(Color::White());
         auto area = GetSearchArea(yaw, pos, 40, 20);
         SearchInArea(area, map);
-        SearchInArea(area, map);
         yaw+=0.1;
         g.Delay(100);
         g.Tick();
-    }
+    }*/
 
-    /*while (ros::ok())
+    while (ros::ok())
     {
         process(rtabmap_client);
 
@@ -102,7 +113,7 @@ int main(int argc, char** argv)
             return 0;
 
         rate.sleep();
-    }*/
+    }
 
     return 0;
 }
@@ -139,7 +150,7 @@ void process(ros::ServiceClient rtabmap_client)
     DrawMap(map);
 
     int width = 1 / resolution;
-    int length = 2 / resolution;
+    int length = 1.5 / resolution;
 
 
     //Получение угла поворота и координат
@@ -151,13 +162,20 @@ void process(ros::ServiceClient rtabmap_client)
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
 
-    Vector2i a;
-    a << (transform.getOrigin().x() - origin.position.x) / resolution,
+    Vector2i pos;
+    pos << (transform.getOrigin().x() - origin.position.x) / resolution,
          (transform.getOrigin().y() - origin.position.y) / resolution;
 
-    auto area = GetSearchArea(yaw, a, length, width);
+    //Получение области, в которой искать препятствия
+    auto area = GetSearchArea(yaw, pos, length, width);
 
-    SearchInArea(area, map);
+    //Поиск препятствия
+    auto obstacle = SearchInArea(pos, area, map);
+    if(obstacle.IsObstacle())
+    {
+        DrawLine(pos, obstacle.Coord, Color(0,0,255));
+    }
+
 }
 
 //Возвращет координаты вершин области, в которой надо искать препятствия
@@ -189,20 +207,21 @@ SearchAreaCoords GetSearchArea(float yaw, Vector2i a, int length, int width)
 
 
 //Ищет препятствия в прямогуольной области (одновременно раскрашивает)
-bool SearchInArea(SearchAreaCoords area, nav_msgs::OccupancyGrid map)
+Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map)
 {
-    bool isEmpty = true;
+    auto o1 = SearchInTriangle(pos, area.c, area.d, area.e, map);
+    auto o2 = SearchInTriangle(pos, area.d, area.e, area.f, map);
 
-    isEmpty &= SearchInTriangle(area.c, area.d, area.e, map);
-    isEmpty &= SearchInTriangle(area.d, area.e, area.f, map);
-
-    return isEmpty;
+    return o1.Dist < o2.Dist ? o1 : o2;
 }
 
 //Ищет препятствие в треугольнике (одновременно раскрашивает)
 //https://habrahabr.ru/post/248159/
-bool SearchInTriangle(Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map)
+Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map)
 {
+    Obstacle obstacle;
+    obstacle.Dist = std::numeric_limits<float>::infinity();
+
     if(t0(1)>t1(1)) std::swap(t0, t1);
     if(t0(1)>t2(1)) std::swap(t0, t2);
     if(t1(1)>t2(1)) std::swap(t1, t2);
@@ -223,33 +242,48 @@ bool SearchInTriangle(Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::Occupancy
     for (int y = t0(1); y < t2(1); y++)
     {
         float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
-        float t0t1_gain = (y - t0(1)) / (float)t0t1_height;
-
         int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
-        int x_end = t0(0)+  t0t1_width * t0t1_gain + 0.5;
+        int x_end;
+
+        //Нижняя половина
+        if(y<t1(1) && t0t1_height != 0)
+        {
+            float t0t1_gain = (y - t0(1)) / (float) t0t1_height;
+            x_end = t0(0) + t0t1_width * t0t1_gain + 0.5;
+        }
+
+        //Верхняя половина
+        if(y >= t1(1) && t1t2_height != 0)
+        {
+            float t1t2_gain = (y - t1(1)) / (float)t1t2_height;
+            x_end = t1(0) + t1t2_width * t1t2_gain + 0.5;
+        }
 
         if(x_start > x_end) std::swap(x_start, x_end);
 
         for(int x = x_start; x<x_end; x++)
-            isEmpty &= CheckCell(x, y, map);
-    }
-
-    if(t1t2_height != 0)
-    {
-        for(int y = t1(1); y<t2(1); y++)
         {
-            float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
-            float t1t2_gain = (y - t1(1)) / (float)t1t2_height;
+            if(x<0 || x>=map.info.width || y<0 || y>=map.info.height)
+                continue;
 
-            int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
-            int x_end = t1(0) + t1t2_width * t1t2_gain + 0.5;
+            bool emptyCell = CheckCell(x, y, map);
 
-            if(x_start > x_end) std::swap(x_start, x_end);
+            if(!emptyCell)
+            {
 
-            for(int x = x_start; x<x_end; x++)
-                isEmpty &= CheckCell(x, y, map);
+                float dist = sqrt(pow((double) (x - pos(0)), 2.0f) + pow(float(y - pos(1)), 2.0f));
+
+                if (dist < obstacle.Dist)
+                {
+                    obstacle.Dist = dist;
+                    obstacle.Coord(0) = x;
+                    obstacle.Coord(1) = y;
+                }
+            }
         }
     }
+
+    return obstacle;
 }
 
 //Проверяет наличие препятствия в клетке
@@ -351,3 +385,37 @@ void DrawCell(int x, int y, Color color)
     int size = cellToPixel;
     g.FillRect(color, x*size, y*size, size, size);
 }
+
+
+/*
+ for (int y = t0(1); y < t1(1); y++)
+    {
+        float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
+        float t0t1_gain = (y - t0(1)) / (float)t0t1_height;
+
+        int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
+        int x_end = t0(0)+  t0t1_width * t0t1_gain + 0.5;
+
+        if(x_start > x_end) std::swap(x_start, x_end);
+
+        for(int x = x_start; x<x_end; x++)
+            isEmpty &= CheckCell(x, y, map);
+    }
+
+    if(t1t2_height != 0)
+    {
+        for(int y = t1(1); y<t2(1); y++)
+        {
+            float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
+            float t1t2_gain = (y - t1(1)) / (float)t1t2_height;
+
+            int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
+            int x_end = t1(0) + t1t2_width * t1t2_gain + 0.5;
+
+            if(x_start > x_end) std::swap(x_start, x_end);
+
+            for(int x = x_start; x<x_end; x++)
+                isEmpty &= CheckCell(x, y, map);
+        }
+    }
+ */
