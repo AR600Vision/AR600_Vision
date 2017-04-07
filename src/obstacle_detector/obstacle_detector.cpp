@@ -7,6 +7,8 @@
 #include <chrono>
 #include <vector>
 #include <cmath>
+#include <thread>
+#include <mutex>
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -56,14 +58,24 @@ const char response_topic[] = "obstacle_detector/obstacle";
 SimpleDraw g(500, 500);
 int cellToPixel = 4;
 
-void process(ros::ServiceClient rtabmap_client);
+//Карта
+nav_msgs::OccupancyGrid proj_map;
+std::mutex map_mutex;
 
+//Функция обработки
+void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map);
+
+//Получение карты
+void getProjMap(ros::ServiceClient rtabmap_client);
+void getProjMapThreead(ros::ServiceClient rtabmap_client);
+
+//Функции поиска препятствий
 SearchAreaCoords GetSearchArea(float yaw, Vector2i robotPos, int length, int width);
-
 Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map);
 Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map);
 bool CheckCell(int x, int y, nav_msgs::OccupancyGrid map);
 
+//Функции рисования
 void DrawLine(Vector2i a, Vector2i b, Color c);
 void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawCell(int x, int y, Color color);
@@ -81,7 +93,7 @@ int main(int argc, char** argv)
     //Инициализация ноды ROS
     ros::init(argc, argv, "ObstacleDetector");
     ros::NodeHandle n;
-    ros::Rate rate(0.5);
+    ros::Rate rate(0.3);
 
     //ros::Publisher responsePublisher = n.advertise<>(response_topic, 1, true);
     ros::ServiceClient rtabmap_client = n.serviceClient<nav_msgs::GetMap>("/rtabmap/get_proj_map");
@@ -91,44 +103,31 @@ int main(int argc, char** argv)
     g.Clear(Color::White());
     g.Update();
 
-    /*nav_msgs::OccupancyGrid map;
-    Vector2i pos = v2(40, 40);
-
-    float yaw = 0;
-
-    while(true){
-        g.Clear(Color::White());
-        auto area = GetSearchArea(yaw, pos, 40, 20);
-        SearchInArea(area, map);
-        yaw+=0.1;
-        g.Delay(100);
-        g.Tick();
-    }*/
+    getProjMap(rtabmap_client);
+    std::thread proj_thread(getProjMapThreead, rtabmap_client);
+    proj_thread.detach();
 
     while (ros::ok())
     {
-        process(rtabmap_client);
+        //Получение карты
+        map_mutex.lock();
+        nav_msgs::OccupancyGrid copy_map  = proj_map;
+        map_mutex.unlock();
+
+        process(rtabmap_client, copy_map);
 
         if(g.Tick())
             return 0;
 
-        rate.sleep();
+        //rate.sleep();
+        ros::spinOnce();
     }
 
     return 0;
 }
 
-void process(ros::ServiceClient rtabmap_client)
+void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
 {
-    //Получение карты
-    nav_msgs::GetMap proj_map_srv;
-    bool success = rtabmap_client.call(proj_map_srv);
-    if (!success)
-    {
-        ROS_ERROR("Failed to get grid_map from rtabmap");
-        return;
-    }
-
     //Получение позиции
     tf::TransformListener listener;
     tf::StampedTransform transform;
@@ -143,7 +142,7 @@ void process(ros::ServiceClient rtabmap_client)
         return;
     }
 
-    nav_msgs::OccupancyGrid map = proj_map_srv.response.map;
+
     float resolution = map.info.resolution;
     geometry_msgs::Pose origin = map.info.origin;
 
@@ -162,6 +161,9 @@ void process(ros::ServiceClient rtabmap_client)
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
 
+    ROS_INFO("Pos: (%lf %lf), Yaw: %lf", transform.getOrigin().x(), transform.getOrigin().y(), yaw);
+
+
     Vector2i pos;
     pos << (transform.getOrigin().x() - origin.position.x) / resolution,
          (transform.getOrigin().y() - origin.position.y) / resolution;
@@ -173,9 +175,39 @@ void process(ros::ServiceClient rtabmap_client)
     auto obstacle = SearchInArea(pos, area, map);
     if(obstacle.IsObstacle())
     {
-        DrawLine(pos, obstacle.Coord, Color(0,0,255));
+        g.DrawLine(Color(0, 0, 255),
+                   pos(0) * cellToPixel, pos(1) * cellToPixel,
+                   obstacle.Coord(0) * cellToPixel, obstacle.Coord(1) * cellToPixel);
     }
 
+
+    isRunning = false;
+}
+
+//Получение карты
+void getProjMap(ros::ServiceClient rtabmap_client)
+{
+    //Получение карты
+    nav_msgs::GetMap proj_map_srv;
+    bool success = rtabmap_client.call(proj_map_srv);
+    if (!success)
+    {
+        ROS_ERROR("Failed to get grid_map from rtabmap");
+        return;
+    }
+
+    map_mutex.lock();
+    proj_map = proj_map_srv.response.map;
+    map_mutex.unlock();
+}
+
+//Поток получениия карты
+void getProjMapThreead(ros::ServiceClient rtabmap_client)
+{
+    while(true)
+    {
+        getProjMap(rtabmap_client);
+    }
 }
 
 //Возвращет координаты вершин области, в которой надо искать препятствия
@@ -186,6 +218,7 @@ SearchAreaCoords GetSearchArea(float yaw, Vector2i a, int length, int width)
     Vector2i b;
     b << a(0) + length*cos(yaw),
             a(1) + length*sin(yaw);
+
 
     Vector2i ab = b - a;
     float v_l = sqrt(ab(0)*ab(0) + ab(1)*ab(1));
@@ -215,8 +248,7 @@ Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGr
     return o1.Dist < o2.Dist ? o1 : o2;
 }
 
-//Ищет препятствие в треугольнике (одновременно раскрашивает)
-//https://habrahabr.ru/post/248159/
+//Ищет препятстhabr.ru/post/248159/
 Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map)
 {
     Obstacle obstacle;
@@ -385,37 +417,3 @@ void DrawCell(int x, int y, Color color)
     int size = cellToPixel;
     g.FillRect(color, x*size, y*size, size, size);
 }
-
-
-/*
- for (int y = t0(1); y < t1(1); y++)
-    {
-        float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
-        float t0t1_gain = (y - t0(1)) / (float)t0t1_height;
-
-        int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
-        int x_end = t0(0)+  t0t1_width * t0t1_gain + 0.5;
-
-        if(x_start > x_end) std::swap(x_start, x_end);
-
-        for(int x = x_start; x<x_end; x++)
-            isEmpty &= CheckCell(x, y, map);
-    }
-
-    if(t1t2_height != 0)
-    {
-        for(int y = t1(1); y<t2(1); y++)
-        {
-            float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
-            float t1t2_gain = (y - t1(1)) / (float)t1t2_height;
-
-            int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
-            int x_end = t1(0) + t1t2_width * t1t2_gain + 0.5;
-
-            if(x_start > x_end) std::swap(x_start, x_end);
-
-            for(int x = x_start; x<x_end; x++)
-                isEmpty &= CheckCell(x, y, map);
-        }
-    }
- */
