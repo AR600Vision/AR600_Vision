@@ -10,16 +10,7 @@ find_package(PCL 1.2 REQUIRED)
 #        StepsController.srv
 #)
 
-add_message_files(
-        FILES
-        StepResponse.msg
-)
 
-generate_messages(
-        DEPENDENCIES
-        std_msgs
-        geometry_msgs
-)
 
 # PCL
 include_directories(${PCL_INCLUDE_DIRS})

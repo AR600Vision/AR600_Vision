@@ -1,2 +1,2 @@
-bool IsObstacle
-geometry_msgs/Pose ObstaclePose
+bool CanStep
+geometry_msgs/Pose Pose

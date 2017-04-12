@@ -20,6 +20,8 @@
 
 #include "SimpleDraw/SimpleDraw.h"
 
+#include "../../../../devel/include/ar600_vision/NearestObstacle.h"
+
 using namespace std;
 using namespace std::chrono;
 using namespace Eigen;
@@ -45,7 +47,7 @@ struct SearchAreaCoords
 struct Obstacle
 {
     float Dist;
-    Vector2i Coord;
+    Vector2f Coord;
 
     bool IsObstacle()
     {
@@ -53,7 +55,10 @@ struct Obstacle
     }
 };
 
-const char response_topic[] = "obstacle_detector/obstacle";
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Топик,в  который публикуются препятствия
+ros::Publisher obstaclePublisher;
 
 SimpleDraw g(500, 500);
 int cellToPixel = 4;
@@ -61,6 +66,11 @@ int cellToPixel = 4;
 //Карта
 nav_msgs::OccupancyGrid proj_map;
 std::mutex map_mutex;
+
+const float area_width = 0.5;
+const float area_height = 1.5;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Функция обработки
 void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map);
@@ -80,12 +90,31 @@ void DrawLine(Vector2i a, Vector2i b, Color c);
 void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawCell(int x, int y, Color color);
 
-Vector2i v2(int x, int y)
+//Преобразует координаты в индексы на карте
+Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map)
 {
-    Vector2i v;
-    v << x, y;
-    return v;
+    float resolution = map.info.resolution;
+    geometry_msgs::Pose origin = map.info.origin;
+
+    Vector2i pose_i;
+    pose_i << (pos.x() - origin.position.x) / resolution,
+            (pos.y() - origin.position.y) / resolution;
+
+    return pose_i;
 }
+
+//Преобразует индексы на карте в нормалные координаты
+Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map)
+{
+    float resolution = map.info.resolution;
+    geometry_msgs::Pose origin = map.info.origin;
+
+    Vector2f pos;
+    pos<<x*resolution + origin.position.x, y*resolution + origin.position.y;
+
+    return pos;
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char** argv)
 {
@@ -97,6 +126,7 @@ int main(int argc, char** argv)
 
     //ros::Publisher responsePublisher = n.advertise<>(response_topic, 1, true);
     ros::ServiceClient rtabmap_client = n.serviceClient<nav_msgs::GetMap>("/rtabmap/get_proj_map");
+    obstaclePublisher = n.advertise<ar600_vision::NearestObstacle>("obstacle_detector/obstacle", 1, true);
 
     ROS_INFO("%s", "AR-600/obstacle_detector started");
 
@@ -142,15 +172,14 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
         return;
     }
 
+    DrawMap(map);
+
 
     float resolution = map.info.resolution;
     geometry_msgs::Pose origin = map.info.origin;
 
-    DrawMap(map);
-
-    int width = 1 / resolution;
-    int length = 1.5 / resolution;
-
+    int width = area_width / resolution;
+    int length = area_height / resolution;
 
     //Получение угла поворота и координат
     tf::Quaternion q = transform.getRotation();
@@ -164,24 +193,30 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
     ROS_INFO("Pos: (%lf %lf), Yaw: %lf", transform.getOrigin().x(), transform.getOrigin().y(), yaw);
 
 
-    Vector2i pos;
-    pos << (transform.getOrigin().x() - origin.position.x) / resolution,
-         (transform.getOrigin().y() - origin.position.y) / resolution;
+    //Целочисленные координаты  (индексы в карте)
+    Vector2i pose_i = PoseToIndex(transform.getOrigin(), map);
 
     //Получение области, в которой искать препятствия
-    auto area = GetSearchArea(yaw, pos, length, width);
+    auto area = GetSearchArea(yaw, pose_i, length, width);
 
     //Поиск препятствия
-    auto obstacle = SearchInArea(pos, area, map);
+    auto obstacle = SearchInArea(pose_i, area, map);
+    ar600_vision::NearestObstacle response;
+
     if(obstacle.IsObstacle())
     {
         g.DrawLine(Color(0, 0, 255),
-                   pos(0) * cellToPixel, pos(1) * cellToPixel,
+                   pose_i(0) * cellToPixel, pose_i(1) * cellToPixel,
                    obstacle.Coord(0) * cellToPixel, obstacle.Coord(1) * cellToPixel);
+
+
+        response.IsObstacle = true;
+        response.ObstaclePose.position.x = obstacle.Coord(0);
+        response.ObstaclePose.position.y = obstacle.Coord(1);
+
+
+        obstaclePublisher.publish(response);
     }
-
-
-    isRunning = false;
 }
 
 //Получение карты
@@ -209,6 +244,8 @@ void getProjMapThreead(ros::ServiceClient rtabmap_client)
         getProjMap(rtabmap_client);
     }
 }
+
+//////////////////////////// ПОИСК ПРЕПЯТСТВИЙ ////////////////////////////////////////////////////
 
 //Возвращет координаты вершин области, в которой надо искать препятствия
 SearchAreaCoords GetSearchArea(float yaw, Vector2i a, int length, int width)
@@ -302,14 +339,14 @@ Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, n
 
             if(!emptyCell)
             {
+                Vector2f obstacleCoord = IndexToPose(x, y, map);
 
-                float dist = sqrt(pow((double) (x - pos(0)), 2.0f) + pow(float(y - pos(1)), 2.0f));
+                float dist = sqrt(pow((double) (obstacleCoord(0) - pos(0)), 2.0f) + pow(float(obstacleCoord(1) - pos(1)), 2.0f));
 
                 if (dist < obstacle.Dist)
                 {
                     obstacle.Dist = dist;
-                    obstacle.Coord(0) = x;
-                    obstacle.Coord(1) = y;
+                    obstacle.Coord = obstacleCoord;
                 }
             }
         }
@@ -339,6 +376,9 @@ bool CheckCell(int x, int y, nav_msgs::OccupancyGrid map)
         return false;
     }
 }
+
+
+////////////////////////////// РИСОВАНИЕ //////////////////////////////////////////////////////////
 
 //Линия алгоритмом Брезенхэма
 //https://habrahabr.ru/post/248153/

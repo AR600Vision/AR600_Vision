@@ -18,6 +18,18 @@ include_directories(
         ${catkin_INCLUDE_DIRS}
         src)
 
+add_message_files(
+        FILES
+        NearestObstacle.msg
+        StepResponse.msg
+)
+
+generate_messages(
+        DEPENDENCIES
+        std_msgs
+        geometry_msgs
+)
+
 # Ноды
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)

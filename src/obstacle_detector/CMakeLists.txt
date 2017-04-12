@@ -2,6 +2,7 @@ INCLUDE(FindPkgConfig)
 
 PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
 
+
 # Исполняемые файлы
 add_executable(obstacle_detector
         src/obstacle_detector/obstacle_detector.cpp
