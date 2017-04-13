@@ -103,8 +103,13 @@ void receiveFunc(int port, int maxBufferSize)
     {
 
         ssize_t recvSize;
-        if((recvSize=receive(sock_desc, buffer, maxBufferSize, &si_frund))==-1)
+        if ((recvSize = receive(sock_desc, buffer, maxBufferSize, &si_frund)) == -1)
+        {
+            std::cout << "Cant recv" << std::endl;
             return;
+
+        }
+
 
         /*
          Формат запроса
@@ -135,11 +140,19 @@ void receiveFunc(int port, int maxBufferSize)
         std::cout<<"\n";
 
         //Обработка запросов
-        if(buffer[6]==1)
+        /*if(buffer[6]==1)
         {
             stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
             bool isDone = stepsMediator->ReadResponse(buffer);
-        }
+        }*/
+
+        buffer[0]=1;
+        buffer[1]=2;
+        buffer[2]=3;
+        buffer[3]=4;
+        buffer[4]=5;
+        buffer[5]=6;
+        buffer[6]=7;
 
         //Обработка препятствий
         bool isObstacle = obstacleMediator->IsObstacle();
