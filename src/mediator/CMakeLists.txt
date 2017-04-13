@@ -8,7 +8,8 @@ add_executable(mediator_node
         src/mediator/mediator_node.cpp
         src/mediator/NodeMediator/NodeMediatorBase.cpp
         src/mediator/NodeMediator/StepsMediator/StepsMediator.cpp
-        src/mediator/NodeMediator/PathMediator/PathMediator.cpp)
+        src/mediator/NodeMediator/PathMediator/PathMediator.cpp
+        src/mediator/NodeMediator/ObstacleMediator/ObstacleMediator.cpp)
 
 target_link_libraries(mediator_node  ${catkin_LIBRARIES})
 

@@ -32,31 +32,10 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    double sendBuffer[]={1, 2, 3, 4, 5, 6, 1};
+    double sendBuffer[]={1, 2, 3, 4, 5, 6, 0, 0};
     double recvBuffer[1000];
 
     test(si_other, s, sendBuffer, sizeof(sendBuffer), recvBuffer, sizeof(recvBuffer));
-
-    double time = omp_get_wtime();
-
-    /*for(int i = 0; i<1000; i++)
-    {
-        int recvSize = test(si_other, s, sendBuffer, sizeof(sendBuffer), recvBuffer, sizeof(recvBuffer));
-
-        if(recvSize!=-1 && recvBuffer[1]==1)
-        {
-            time = omp_get_wtime() - time;
-
-            for (int i = 0; i < recvSize; i++)
-            {
-                printf("%lf\t", recvBuffer[i]);
-            }
-
-            printf(" | %lf\n", time);
-        }
-
-        usleep(5000);
-    }*/
 
 
     return 0;

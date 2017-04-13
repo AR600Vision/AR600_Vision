@@ -22,11 +22,13 @@
 #include "NodeMediator/NodeMediatorBase.h"
 #include "NodeMediator/StepsMediator/StepsMediator.h"
 #include "NodeMediator/PathMediator/PathMediator.h"
+#include "NodeMediator/ObstacleMediator/ObstacleMediator.h"
 
 using namespace std;
 using namespace std::chrono;
 
 StepsMediator* stepsMediator;
+ObstacleMediator* obstacleMediator;;
 
 bool isReceive;
 steady_clock::time_point start;
@@ -43,6 +45,7 @@ int main(int argc, char ** argv)
     ros::NodeHandle nh;
 
     stepsMediator = new StepsMediator(nh);
+    obstacleMediator = new ObstacleMediator(nh);
 
     ROS_INFO("Receiver node started...");
 
@@ -63,7 +66,7 @@ void receiveFunc(int port, int maxBufferSize)
     sockaddr_in si_me;
 
     //Количество отсылаемых элементов
-    int sendSize = 6 + 1; //wtf???
+    int sendSize = 6 + 1 + 1; //wtf???
 
     /// Create socket
     int sock_desc = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -103,6 +106,25 @@ void receiveFunc(int port, int maxBufferSize)
         if((recvSize=receive(sock_desc, buffer, maxBufferSize, &si_frund))==-1)
             return;
 
+        /*
+         Формат запроса
+         |-----|-----|-----|-----|-----|-----|--------------|
+         | xsl | ysl | zsL | xsr | ysr | zsr | should check |
+         |-----|-----|-----|-----|-----|-----|--------------|
+                           |                 |
+             Координаты    |  Координаты     | Надо ли
+             шага лев      |  шага прав      | проверять шаг
+
+         Формат ответа
+         |-----|-----|-----|-----|-----|-----|--------------|-------------|
+         | xsl | ysl | zsL | xsr | ysr | zsr | can step     | is obstacle |
+         |-----|-----|-----|-----|-----|-----|--------------|-------------|
+                           |                 |              |
+             Координаты    |  Координаты     | Можно ли     | Есть ли
+             шага лев      |  шага прав      | делать шаг   | препятствие
+
+         */
+
         ROS_INFO("Received data");
 
         for(int i = 0; i<recvSize; i++)
@@ -112,16 +134,19 @@ void receiveFunc(int port, int maxBufferSize)
 
         std::cout<<"\n";
 
-        //Отправка запросов
+        //Обработка запросов
         if(buffer[6]==1)
         {
             stepsMediator->SendRequest(buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
             bool isDone = stepsMediator->ReadResponse(buffer);
         }
 
+        //Обработка препятствий
+        bool isObstacle = obstacleMediator->IsObstacle();
+        buffer[7] = isObstacle;
 
 
-
+        //Отправка запрсоов
         socklen_t slen_res = sizeof(si_frund);
         if(sendto(sock_desc, buffer, sendSize * sizeof(double), 0, (sockaddr *)&si_frund, (socklen_t)slen_res)!=-1)
         {
@@ -173,31 +198,3 @@ double getSeconds()
     duration<double> time_span = duration_cast<duration<double>>(steady_clock::now() - start);
     return time_span.count();
 }
-
-
-/*
- *
-tf::TransformListener listener;
-tf::StampedTransform transform;
-try
-{
-    listener.waitForTransform("/odom", "/camera_link", ros::Time(0), ros::Duration(3));
-    listener.lookupTransform("/odom", "/camera_link", ros::Time(0), transform);
-}
-catch (tf::TransformException ex)
-{
-    ROS_ERROR("%s",ex.what());
-}
-
-
- tf::Vector3 position = transform.getOrigin();
-tf::Quaternion q = transform.getRotation();
-q.normalize();
-
-buffer[0] = position.x();
-buffer[1] = position.y();
-buffer[2] = position.z();
-
-// Get angle
-tf::Matrix3x3 m(q);
-m.getRPY(buffer[3], buffer[4], buffer[5]);*/

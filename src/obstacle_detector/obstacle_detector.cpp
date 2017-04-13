@@ -47,7 +47,7 @@ struct SearchAreaCoords
 struct Obstacle
 {
     float Dist;
-    Vector2f Coord;
+    Vector2i Coord;
 
     bool IsObstacle()
     {
@@ -91,29 +91,10 @@ void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawCell(int x, int y, Color color);
 
 //Преобразует координаты в индексы на карте
-Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map)
-{
-    float resolution = map.info.resolution;
-    geometry_msgs::Pose origin = map.info.origin;
-
-    Vector2i pose_i;
-    pose_i << (pos.x() - origin.position.x) / resolution,
-            (pos.y() - origin.position.y) / resolution;
-
-    return pose_i;
-}
+Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map);
 
 //Преобразует индексы на карте в нормалные координаты
-Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map)
-{
-    float resolution = map.info.resolution;
-    geometry_msgs::Pose origin = map.info.origin;
-
-    Vector2f pos;
-    pos<<x*resolution + origin.position.x, y*resolution + origin.position.y;
-
-    return pos;
-}
+Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map);
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char** argv)
@@ -176,7 +157,6 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
 
 
     float resolution = map.info.resolution;
-    geometry_msgs::Pose origin = map.info.origin;
 
     int width = area_width / resolution;
     int length = area_height / resolution;
@@ -190,7 +170,7 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
 
-    ROS_INFO("Pos: (%lf %lf), Yaw: %lf", transform.getOrigin().x(), transform.getOrigin().y(), yaw);
+    //ROS_INFO("Pos: (%lf %lf), Yaw: %lf", transform.getOrigin().x(), transform.getOrigin().y(), yaw);
 
 
     //Целочисленные координаты  (индексы в карте)
@@ -210,13 +190,22 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
                    obstacle.Coord(0) * cellToPixel, obstacle.Coord(1) * cellToPixel);
 
 
+
+
         response.IsObstacle = true;
         response.ObstaclePose.position.x = obstacle.Coord(0);
         response.ObstaclePose.position.y = obstacle.Coord(1);
-
-
-        obstaclePublisher.publish(response);
+        ROS_INFO("Obstacle: (%d, %d), Dist: %lf", obstacle.Coord(0), obstacle.Coord(1), obstacle.Dist);
     }
+    else
+    {
+        response.IsObstacle = false;
+        response.ObstaclePose.position.x = 0;
+        response.ObstaclePose.position.y = 0;
+        ROS_INFO("No obstacle");
+    }
+
+    obstaclePublisher.publish(response);
 }
 
 //Получение карты
@@ -339,14 +328,15 @@ Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, n
 
             if(!emptyCell)
             {
-                Vector2f obstacleCoord = IndexToPose(x, y, map);
+                //Vector2f obstacleCoord = IndexToPose(x, y, map);
 
-                float dist = sqrt(pow((double) (obstacleCoord(0) - pos(0)), 2.0f) + pow(float(obstacleCoord(1) - pos(1)), 2.0f));
+                float dist = sqrt(pow((double) (x - pos(0)), 2.0f) + pow(float(y - pos(1)), 2.0f));
 
                 if (dist < obstacle.Dist)
                 {
                     obstacle.Dist = dist;
-                    obstacle.Coord = obstacleCoord;
+                    obstacle.Coord(0)=x;
+                    obstacle.Coord(1)=y;
                 }
             }
         }
@@ -456,4 +446,31 @@ void DrawCell(int x, int y, Color color)
 {
     int size = cellToPixel;
     g.FillRect(color, x*size, y*size, size, size);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Преобразует координаты в индексы на карте
+Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map)
+{
+    float resolution = map.info.resolution;
+    geometry_msgs::Pose origin = map.info.origin;
+
+    Vector2i pose_i;
+    pose_i << (pos.x() - origin.position.x) / resolution,
+            (pos.y() - origin.position.y) / resolution;
+
+    return pose_i;
+}
+
+//Преобразует индексы на карте в нормалные координаты
+Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map)
+{
+    float resolution = map.info.resolution;
+    geometry_msgs::Pose origin = map.info.origin;
+
+    Vector2f pos;
+    pos<<x*resolution + origin.position.x, y*resolution + origin.position.y;
+
+    return pos;
 }
