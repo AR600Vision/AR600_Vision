@@ -1,2 +1,3 @@
 bool IsObstacle
+float32 Distance
 geometry_msgs/Pose ObstaclePose

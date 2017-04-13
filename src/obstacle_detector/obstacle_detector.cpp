@@ -14,6 +14,7 @@
 #include <nav_msgs/GetMap.h>
 #include <geometry_msgs/Pose.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <std_msgs/Bool.h>
 #include <tf/transform_listener.h>
 
 #include <Eigen/Dense>
@@ -57,8 +58,12 @@ struct Obstacle
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+char obstacle_topic[] = "obstacle_detector/obstacle";
+char obstacle_changed_topic[] = "obstacle_detector/obstacle_changed";
+
 //Топик,в  который публикуются препятствия
 ros::Publisher obstaclePublisher;
+ros::Publisher obstacleChangedPublisher;
 
 SimpleDraw g(500, 500);
 int cellToPixel = 4;
@@ -69,6 +74,8 @@ std::mutex map_mutex;
 
 const float area_width = 0.5;
 const float area_height = 1.5;
+
+bool isObstacle = false;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +114,8 @@ int main(int argc, char** argv)
 
     //ros::Publisher responsePublisher = n.advertise<>(response_topic, 1, true);
     ros::ServiceClient rtabmap_client = n.serviceClient<nav_msgs::GetMap>("/rtabmap/get_proj_map");
-    obstaclePublisher = n.advertise<ar600_vision::NearestObstacle>("obstacle_detector/obstacle", 1, true);
+    obstaclePublisher = n.advertise<ar600_vision::NearestObstacle>(obstacle_topic, 1, true);
+    obstacleChangedPublisher = n.advertise<std_msgs::Bool>(obstacle_changed_topic, 1, true);
 
     ROS_INFO("%s", "AR-600/obstacle_detector started");
 
@@ -183,6 +191,7 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
     auto obstacle = SearchInArea(pose_i, area, map);
     ar600_vision::NearestObstacle response;
 
+    //Публикуем препятствие
     if(obstacle.IsObstacle())
     {
         g.DrawLine(Color(0, 0, 255),
@@ -195,6 +204,7 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
         response.IsObstacle = true;
         response.ObstaclePose.position.x = obstacle.Coord(0);
         response.ObstaclePose.position.y = obstacle.Coord(1);
+        response.Distance = obstacle.Dist;
         ROS_INFO("Obstacle: (%d, %d), Dist: %lf", obstacle.Coord(0), obstacle.Coord(1), obstacle.Dist);
     }
     else
@@ -202,10 +212,21 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
         response.IsObstacle = false;
         response.ObstaclePose.position.x = 0;
         response.ObstaclePose.position.y = 0;
+        response.Distance = 0;
         ROS_INFO("No obstacle");
     }
 
     obstaclePublisher.publish(response);
+
+    //наличие препятствия изменилось
+    if(isObstacle != obstacle.IsObstacle())
+    {
+        std_msgs::Bool response;
+        isObstacle = obstacle.IsObstacle();
+        response.data  = isObstacle;
+        obstacleChangedPublisher.publish(response);
+    }
+
 }
 
 //Получение карты
