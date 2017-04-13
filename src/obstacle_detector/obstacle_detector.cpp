@@ -19,7 +19,7 @@
 #include <Eigen/Dense>
 
 #include "SimpleDraw/SimpleDraw.h"
-
+#include "CoordConverter/CoordConverter.h"
 #include "../../../../devel/include/ar600_vision/NearestObstacle.h"
 
 using namespace std;
@@ -40,14 +40,14 @@ struct SearchAreaCoords
          (robot)
      */
 
-    Vector2i a, b, c, d, e, f;
+    tf::Vector3 a, b, c, d, e, f;
 };
 
 //Препятствие
 struct Obstacle
 {
     float Dist;
-    Vector2i Coord;
+    tf::Vector3 Coord;
 
     bool IsObstacle()
     {
@@ -80,9 +80,9 @@ void getProjMap(ros::ServiceClient rtabmap_client);
 void getProjMapThreead(ros::ServiceClient rtabmap_client);
 
 //Функции поиска препятствий
-SearchAreaCoords GetSearchArea(float yaw, Vector2i robotPos, int length, int width);
-Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map);
-Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map);
+SearchAreaCoords GetSearchArea(float yaw, tf::Vector3 robotPos, int length, int width);
+Obstacle SearchInArea(tf::Vector3 pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map);
+Obstacle SearchInTriangle(tf::Vector3 pos, tf::Vector3 t0, tf::Vector3 t1, tf::Vector3 t2, nav_msgs::OccupancyGrid map);
 bool CheckCell(int x, int y, nav_msgs::OccupancyGrid map);
 
 //Функции рисования
@@ -91,10 +91,10 @@ void DrawMap(nav_msgs::OccupancyGrid map);
 void DrawCell(int x, int y, Color color);
 
 //Преобразует координаты в индексы на карте
-Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map);
+//Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map);
 
 //Преобразует индексы на карте в нормалные координаты
-Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map);
+//Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map);
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char** argv)
@@ -174,28 +174,28 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
 
 
     //Целочисленные координаты  (индексы в карте)
-    Vector2i pose_i = PoseToIndex(transform.getOrigin(), map);
+    tf::Vector3 pose_index = CoordConverter::CoordToIndex(transform.getOrigin(), map);
 
     //Получение области, в которой искать препятствия
-    auto area = GetSearchArea(yaw, pose_i, length, width);
+    auto area = GetSearchArea(yaw, pose_index, length, width);
 
     //Поиск препятствия
-    auto obstacle = SearchInArea(pose_i, area, map);
+    auto obstacle = SearchInArea(pose_index, area, map);
     ar600_vision::NearestObstacle response;
 
     if(obstacle.IsObstacle())
     {
         g.DrawLine(Color(0, 0, 255),
-                   pose_i(0) * cellToPixel, pose_i(1) * cellToPixel,
-                   obstacle.Coord(0) * cellToPixel, obstacle.Coord(1) * cellToPixel);
+                   pose_index.x() * cellToPixel, pose_index.y() * cellToPixel,
+                   obstacle.Coord.x() * cellToPixel, obstacle.Coord.y() * cellToPixel);
 
 
 
 
         response.IsObstacle = true;
-        response.ObstaclePose.position.x = obstacle.Coord(0);
-        response.ObstaclePose.position.y = obstacle.Coord(1);
-        ROS_INFO("Obstacle: (%d, %d), Dist: %lf", obstacle.Coord(0), obstacle.Coord(1), obstacle.Dist);
+        response.ObstaclePose.position.x = obstacle.Coord.x();
+        response.ObstaclePose.position.y = obstacle.Coord.y();
+        ROS_INFO("Obstacle: (%lf, %lf), Dist: %lf", obstacle.Coord.x(), obstacle.Coord.y(), obstacle.Dist);
     }
     else
     {
@@ -237,36 +237,26 @@ void getProjMapThreead(ros::ServiceClient rtabmap_client)
 //////////////////////////// ПОИСК ПРЕПЯТСТВИЙ ////////////////////////////////////////////////////
 
 //Возвращет координаты вершин области, в которой надо искать препятствия
-SearchAreaCoords GetSearchArea(float yaw, Vector2i a, int length, int width)
+SearchAreaCoords GetSearchArea(float yaw, tf::Vector3 a, int length, int width)
 {
 
     //Положение цели (B)
-    Vector2i b;
-    b << a(0) + length*cos(yaw),
-            a(1) + length*sin(yaw);
+    tf::Vector3 b(a.x() + length * cos(yaw), a.y() + length * sin(yaw), 0);
 
+    tf::Vector3 ab = b - a;
+    float v_l = ab.length(); //sqrt(ab.x()*ab.x() + ab(1)*ab(1));
 
-    Vector2i ab = b - a;
-    float v_l = sqrt(ab(0)*ab(0) + ab(1)*ab(1));
-
-    Vector2i c;
-    c << a(0) + ab(1) / v_l * width/2,
-            a(1) - ab(0) / v_l * width/2;
-
-    Vector2i d;
-    d << a(0) - ab(1) / v_l * width/2,
-            a(1) + ab(0) / v_l * width/2;
-
-    Vector2i e = c + ab;
-
-    Vector2i f = d + ab;
+    tf::Vector3 c (a.x() + ab.y() / v_l * width /2, a.y() + ab.x() / v_l * width / 2, 0);
+    tf::Vector3 d (a.x() - ab.y() / v_l * width /2, a.y() + ab.x() / v_l * width / 2, 0);
+    tf::Vector3 e = c + ab;
+    tf::Vector3 f = d + ab;
 
     return SearchAreaCoords {a, b, c, d, e, f};
 }
 
 
 //Ищет препятствия в прямогуольной области (одновременно раскрашивает)
-Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map)
+Obstacle SearchInArea(tf::Vector3 pos, SearchAreaCoords area, nav_msgs::OccupancyGrid map)
 {
     auto o1 = SearchInTriangle(pos, area.c, area.d, area.e, map);
     auto o2 = SearchInTriangle(pos, area.d, area.e, area.f, map);
@@ -275,46 +265,46 @@ Obstacle SearchInArea(Vector2i pos, SearchAreaCoords area, nav_msgs::OccupancyGr
 }
 
 //Ищет препятстhabr.ru/post/248159/
-Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, nav_msgs::OccupancyGrid map)
+Obstacle SearchInTriangle(tf::Vector3 pos, tf::Vector3 t0, tf::Vector3 t1, tf::Vector3 t2, nav_msgs::OccupancyGrid map)
 {
     Obstacle obstacle;
     obstacle.Dist = std::numeric_limits<float>::infinity();
 
-    if(t0(1)>t1(1)) std::swap(t0, t1);
-    if(t0(1)>t2(1)) std::swap(t0, t2);
-    if(t1(1)>t2(1)) std::swap(t1, t2);
+    if(t0.y()>t1.y()) std::swap(t0, t1);
+    if(t0.y()>t2.y()) std::swap(t0, t2);
+    if(t1.y()>t2.y()) std::swap(t1, t2);
 
-    int t0t2_height = t2(1) - t0(1);
-    int t0t2_width = t2(0) - t0(0);
+    int t0t2_height = t2.y() - t0.y();
+    int t0t2_width = t2.x() - t0.x();
 
-    int t0t1_height = t1(1) - t0(1);
-    int t0t1_width = t1(0) - t0(0);
+    int t0t1_height = t1.y() - t0.y();
+    int t0t1_width = t1.x() - t0.x();
 
-    int t1t2_height = t2(1) - t1(1);
-    int t1t2_width = t2(0) - t1(0);
+    int t1t2_height = t2.y() - t1.y();
+    int t1t2_width = t2.x() - t1.x();
 
     //Можно потом сразу возвращать, если нашли препятствие,
     //но сейчас пройдем все, чтобы визуализировть
     bool isEmpty = true;
 
-    for (int y = t0(1); y < t2(1); y++)
+    for (int y = t0.y(); y < t2.y(); y++)
     {
-        float t0t2_gain = (y - t0(1)) / (float)t0t2_height;
-        int x_start = t0(0) + t0t2_width * t0t2_gain + 0.5;
+        float t0t2_gain = (y - t0.y()) / (float)t0t2_height;
+        int x_start = t0.x() + t0t2_width * t0t2_gain + 0.5;
         int x_end;
 
         //Нижняя половина
-        if(y<t1(1) && t0t1_height != 0)
+        if(y<t1.y() && t0t1_height != 0)
         {
-            float t0t1_gain = (y - t0(1)) / (float) t0t1_height;
-            x_end = t0(0) + t0t1_width * t0t1_gain + 0.5;
+            float t0t1_gain = (y - t0.y()) / (float) t0t1_height;
+            x_end = t0.x() + t0t1_width * t0t1_gain + 0.5;
         }
 
         //Верхняя половина
-        if(y >= t1(1) && t1t2_height != 0)
+        if(y >= t1.y() && t1t2_height != 0)
         {
-            float t1t2_gain = (y - t1(1)) / (float)t1t2_height;
-            x_end = t1(0) + t1t2_width * t1t2_gain + 0.5;
+            float t1t2_gain = (y - t1.y()) / (float)t1t2_height;
+            x_end = t1.x() + t1t2_width * t1t2_gain + 0.5;
         }
 
         if(x_start > x_end) std::swap(x_start, x_end);
@@ -330,13 +320,13 @@ Obstacle SearchInTriangle(Vector2i pos, Vector2i t0, Vector2i t1, Vector2i t2, n
             {
                 //Vector2f obstacleCoord = IndexToPose(x, y, map);
 
-                float dist = sqrt(pow((double) (x - pos(0)), 2.0f) + pow(float(y - pos(1)), 2.0f));
+                float dist = sqrt(pow((double) (x - pos.x()), 2.0f) + pow(float(y - pos.y()), 2.0f));
 
                 if (dist < obstacle.Dist)
                 {
                     obstacle.Dist = dist;
-                    obstacle.Coord(0)=x;
-                    obstacle.Coord(1)=y;
+                    obstacle.Coord.setX(x);
+                    obstacle.Coord.setY(y);
                 }
             }
         }
@@ -451,7 +441,7 @@ void DrawCell(int x, int y, Color color)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Преобразует координаты в индексы на карте
-Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map)
+/*Vector2i PoseToIndex(tf::Vector3 pos, nav_msgs::OccupancyGrid map)
 {
     float resolution = map.info.resolution;
     geometry_msgs::Pose origin = map.info.origin;
@@ -473,4 +463,4 @@ Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map)
     pos<<x*resolution + origin.position.x, y*resolution + origin.position.y;
 
     return pos;
-}
+}*/

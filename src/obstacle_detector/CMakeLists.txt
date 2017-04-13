@@ -6,7 +6,8 @@ PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
 # Исполняемые файлы
 add_executable(obstacle_detector
         src/obstacle_detector/obstacle_detector.cpp
-        src/obstacle_detector/SimpleDraw/SimpleDraw.cpp)
+        src/obstacle_detector/SimpleDraw/SimpleDraw.cpp
+        src/obstacle_detector/CoordConverter/CoordConverter.cpp)
 
 # Подключение библиотек
 #target_include_directories(obstacle_detector ${SDL2_INCLUDE_DIR})
