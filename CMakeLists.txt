@@ -34,6 +34,7 @@ generate_messages(
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/steps_controller/CMakeLists.txt)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/mediator/CMakeLists.txt)
 include(${CMAKE_CURRENT_SOURCE_DIR}/src/obstacle_detector/CMakeLists.txt)
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/obstacle_communicator/CMakeLists.txt)
 
 # Declare a catkin package
 catkin_package()

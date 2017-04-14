@@ -41,13 +41,13 @@ float fakeTime = 0;
 
 int main(int argc, char ** argv)
 {
-    ros::init(argc, argv, "ar600e_receiver_node");
+    ros::init(argc, argv, "ar600e_mediator_node");
     ros::NodeHandle nh;
 
     stepsMediator = new StepsMediator(nh);
     obstacleMediator = new ObstacleMediator(nh);
 
-    ROS_INFO("Receiver node started...");
+    ROS_INFO("Mediator node started...");
 
     start = steady_clock::now();
 
