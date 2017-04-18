@@ -1,0 +1,9 @@
+<launch>
+    <group>
+        <param name="SearchAreaLength" value="1"/>   <!-- Длина зоны поиска -->
+        <param name="SearchAreaWidth" value="0.2"/>      <!-- Ширина зоны поиска -->
+        <param name="TooFastThreshold" value="3"/>     <!-- Задержка, чтобы слишком быстро не слал -->
+
+        <node name="obstacle_detector" pkg="ar600_vision" type="obstacle_detector" output="screen"/>
+    </group>
+</launch>

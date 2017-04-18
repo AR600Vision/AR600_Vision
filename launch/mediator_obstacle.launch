@@ -1,3 +1,4 @@
+<!-- Запускает обнаружение препятствий и MediatorNode -->
 <launch>
     <node name="obstacle_detector" pkg="ar600_vision" type="obstacle_detector" output="screen"/>
     <node name="mediator_node" pkg="ar600_vision" type="mediator_node" output="screen"/>

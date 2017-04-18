@@ -1,3 +1,4 @@
+<!-- Запускает StepsController и Mediator Node -->
 <launch>
     <include file="$(find ar600_vision)/launch/steps_controller.launch" />
     <node name="mediator_node" pkg="ar600_vision" type="mediator_node" output="screen"/>

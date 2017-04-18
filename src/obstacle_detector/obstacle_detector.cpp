@@ -70,26 +70,30 @@ SimpleDraw g(500, 500);
 int cellToPixel = 4;
 
 //Карта
-nav_msgs::OccupancyGrid proj_map;
-std::mutex map_mutex;
-
-const float area_width = 0.2;
-const float area_height = 1;
+nav_msgs::OccupancyGrid projMap;
+std::mutex mapMutex;
 
 bool isObstacle = false;
 
 //Чтобы не слишком часто слать о препятствии
 steady_clock::time_point fix_clock;
 bool isFirstTime = true;
+
+//Параметры
+float areaLength = 0.2;
+float areaWidth = 1;
 float tooFastThreshold = 3;
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Получение параметров ROS
+bool GetParmas(ros::NodeHandle & nh);
 
 //Функция обработки
 void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map);
 
 //Получение карты
 void getProjMap(ros::ServiceClient rtabmap_client);
-void getProjMapThreead(ros::ServiceClient rtabmap_client);
+void getProjMapThread(ros::ServiceClient rtabmap_client);
 
 //Функции поиска препятствий
 SearchAreaCoords GetSearchArea(float yaw, Vector2i robotPos, int length, int width);
@@ -117,6 +121,14 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
     ros::Rate rate(0.3);
 
+    //Получение параметров
+    if(!GetParmas(n))
+    {
+        ROS_ERROR("Unable to read all required parameters");
+        ROS_ERROR("ObstacleDetector stopping...");
+        return 0;
+    }
+
     //ros::Publisher responsePublisher = n.advertise<>(response_topic, 1, true);
     ros::ServiceClient rtabmap_client = n.serviceClient<nav_msgs::GetMap>("/rtabmap/get_proj_map");
     obstaclePublisher = n.advertise<ar600_vision::NearestObstacle>(obstacle_topic, 1, true);
@@ -128,28 +140,30 @@ int main(int argc, char** argv)
     g.Update();
 
     getProjMap(rtabmap_client);
-    std::thread proj_thread(getProjMapThreead, rtabmap_client);
+    std::thread proj_thread(getProjMapThread, rtabmap_client);
     proj_thread.detach();
 
     while (ros::ok())
     {
         //Получение карты
-        map_mutex.lock();
-        nav_msgs::OccupancyGrid copy_map  = proj_map;
-        map_mutex.unlock();
+        mapMutex.lock();
+        nav_msgs::OccupancyGrid copy_map  = projMap;
+        mapMutex.unlock();
 
         process(rtabmap_client, copy_map);
 
         if(g.Tick())
             return 0;
 
-        //rate.sleep();
         ros::spinOnce();
     }
 
     return 0;
 }
 
+
+
+//Основная функция обработки
 void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
 {
     //Получение позиции
@@ -171,8 +185,8 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
 
     float resolution = map.info.resolution;
 
-    int width = area_width / resolution;
-    int length = area_height / resolution;
+    int width =  areaWidth / resolution;
+    int length = areaLength / resolution;
 
     //Получение угла поворота и координат
     tf::Quaternion q = transform.getRotation();
@@ -216,7 +230,6 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
         response.ObstaclePose.position.x = 0;
         response.ObstaclePose.position.y = 0;
         response.Distance = 0;
-        ROS_INFO("No obstacle");
     }
 
     obstaclePublisher.publish(response);
@@ -267,13 +280,13 @@ void getProjMap(ros::ServiceClient rtabmap_client)
         return;
     }
 
-    map_mutex.lock();
-    proj_map = proj_map_srv.response.map;
-    map_mutex.unlock();
+    mapMutex.lock();
+    projMap = proj_map_srv.response.map;
+    mapMutex.unlock();
 }
 
 //Поток получениия карты
-void getProjMapThreead(ros::ServiceClient rtabmap_client)
+void getProjMapThread(ros::ServiceClient rtabmap_client)
 {
     while(true)
     {
@@ -520,4 +533,14 @@ Vector2f IndexToPose(int x, int y, nav_msgs::OccupancyGrid map)
     pos<<x*resolution + origin.position.x, y*resolution + origin.position.y;
 
     return pos;
+}
+
+//Получение параметров ROS
+bool GetParmas(ros::NodeHandle & nh)
+{
+    bool isOk = true;;
+    isOk &= nh.getParam("SearchAreaLength", areaLength);
+    isOk &= nh.getParam("SearchAreaWidth", areaWidth);
+    isOk &= nh.getParam("TooFastThreshold", tooFastThreshold);
+    return isOk;
 }
