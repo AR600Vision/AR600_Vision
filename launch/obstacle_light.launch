@@ -1,0 +1,7 @@
+<launch>
+    <include file="$(find rtabmap_ros)/launch/rgbd_mapping.launch">
+        <arg name="rtabmap_args" value="--delete_db_on_start"/>
+    </include>
+     <node name="obstacle_detector" pkg="ar600_vision" type="obstacle_detector" output="screen"/>
+    <node name="obstacle_communicator" pkg="ar600_vision" type="obstacle_communicator" output="screen"/>
+</launch>

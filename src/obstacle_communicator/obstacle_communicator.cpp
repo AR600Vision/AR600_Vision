@@ -13,7 +13,7 @@
 #include <std_msgs/Bool.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-
+#include <inttypes.h>
 
 class CommandSender
 {
@@ -36,7 +36,7 @@ public:
         }
     }
 
-    bool SendCommand(const char command)
+    bool SendCommand(const uint8_t command)
     {
         int slen=sizeof(si_other);
         if(sendto(_socket, &command, 1 , 0 , (struct sockaddr *) &si_other, slen)==-1)
@@ -81,7 +81,7 @@ void ObstacleChanged(std_msgs::Bool isObstacle)
         //и на остановку
         ROS_INFO("Obstacle detected");
 
-        if(!control_sender.SendCommand('3'))
+        if(!control_sender.SendCommand(3))
             ROS_ERROR("Error sending command to control program");
     }
 }

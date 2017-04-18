@@ -9,6 +9,7 @@
 #include <cmath>
 #include <thread>
 #include <mutex>
+#include <chrono>
 
 #include <ros/ros.h>
 #include <nav_msgs/GetMap.h>
@@ -72,11 +73,15 @@ int cellToPixel = 4;
 nav_msgs::OccupancyGrid proj_map;
 std::mutex map_mutex;
 
-const float area_width = 0.5;
-const float area_height = 1.5;
+const float area_width = 0.2;
+const float area_height = 1;
 
 bool isObstacle = false;
 
+//Чтобы не слишком часто слать о препятствии
+steady_clock::time_point fix_clock;
+bool isFirstTime = true;
+float tooFastThreshold = 3;
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 //Функция обработки
@@ -178,8 +183,6 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
     tfScalar yaw, pitch, roll;
     m.getRPY(roll, pitch, yaw);
 
-    //ROS_INFO("Pos: (%lf %lf), Yaw: %lf", transform.getOrigin().x(), transform.getOrigin().y(), yaw);
-
 
     //Целочисленные координаты  (индексы в карте)
     Vector2i pose_i = PoseToIndex(transform.getOrigin(), map);
@@ -221,10 +224,33 @@ void process(ros::ServiceClient rtabmap_client, nav_msgs::OccupancyGrid map)
     //наличие препятствия изменилось
     if(isObstacle != obstacle.IsObstacle())
     {
-        std_msgs::Bool response;
-        isObstacle = obstacle.IsObstacle();
-        response.data  = isObstacle;
-        obstacleChangedPublisher.publish(response);
+        //if(!isObstacle && obstacle.IsObstacle())
+        //{
+            //Препятствие появилось
+            double duration =  std::chrono::duration_cast<std::chrono::seconds>(steady_clock::now()-fix_clock).count();
+
+
+            if(isFirstTime || duration > tooFastThreshold)
+            {
+                //Слать
+                std_msgs::Bool response;
+                isObstacle = obstacle.IsObstacle();
+                response.data  = isObstacle;
+                obstacleChangedPublisher.publish(response);
+                fix_clock  = steady_clock::now();
+
+            }
+            else
+            {
+                ROS_WARN("Obstacle is changing too fast");
+                return;
+            }
+
+        isFirstTime = false;
+
+        //}
+
+
     }
 
 }
